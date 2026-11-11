@@ -5,6 +5,7 @@ import { ApiError, api } from "../api";
 import { RowsSkeleton } from "../components/Skeleton";
 import { money, titleCaseStatus } from "../format";
 import { useAuth, useCart, useStore } from "../state";
+import { clearStaffReferralId, readStaffReferralId } from "../staffReferral";
 import type { OrderResult, SavedAddress } from "../types";
 
 const payments = [
@@ -165,8 +166,10 @@ export function CheckoutPage() {
         customerNote: form.customerNote || undefined,
         email: user ? undefined : form.email,
         couponCode: user && form.couponCode.trim() ? form.couponCode.trim() : undefined,
+        staffReferralId: readStaffReferralId() ?? undefined,
       });
       setOrder(placed);
+      clearStaffReferralId();
       await refresh();
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : "Could not place the order");

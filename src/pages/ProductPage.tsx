@@ -1,13 +1,14 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, Clock3, Heart, PackageCheck, Ruler } from "lucide-react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { ArrowRight, Clock3, Heart, MessageCircle, PackageCheck, Ruler } from "lucide-react";
 import { ApiError, api, DATA_REFRESH_INTERVAL } from "../api";
 import { ProductCarousel } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
 import { coverImage, money, productFlags } from "../format";
 import { readRecentlyViewedIds, readRecentlyViewedProducts, recordRecentlyViewed } from "../recentlyViewed";
 import { useAuth, useCart } from "../state";
-import type { ProductCardData, ProductDetail, Review, SizeGuide, Variant } from "../types";
+import { isStaffReferralId, readStaffReferralId, saveStaffReferralId } from "../staffReferral";
+import type { ProductCardData, ProductDetail, Review, SizeGuide, StaffReferral, Variant } from "../types";
 
 const PRODUCT_CACHE_KEY = "store_product_details";
 const PRODUCT_CACHE_LIMIT = 12;
@@ -19,6 +20,16 @@ const GENDER_LABELS: Record<string, string> = {
   KIDS: "Kids",
 };
 type ProductInfoTab = "description" | "specification" | "return-policy" | "reviews";
+
+function staffWhatsAppUrl(phone: string, message: string): string {
+  const digits = phone.replace(/\D/g, "");
+  const number = digits.startsWith("880")
+    ? digits
+    : digits.startsWith("0")
+      ? `88${digits}`
+      : digits;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+}
 
 function hasProductSize(variant: Variant) {
   return Boolean(variant.size) && !(
@@ -84,6 +95,7 @@ function cacheProduct(product: ProductDetail) {
 
 export function ProductPage() {
   const { id = "" } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { add, busy, setDrawer } = useCart();
@@ -101,6 +113,10 @@ export function ProductPage() {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState("");
+  const [staffReferralId, setStaffReferralId] = useState(() => readStaffReferralId());
+  const [staffReferral, setStaffReferral] = useState<StaffReferral | null>(null);
+  const [staffReferralError, setStaffReferralError] = useState("");
+  const [staffReferralLoading, setStaffReferralLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [relatedLoading, setRelatedLoading] = useState(true);
   const [reviewsLoading, setReviewsLoading] = useState(true);
@@ -114,6 +130,45 @@ export function ProductPage() {
   });
   const [recentIndex, setRecentIndex] = useState(0);
   const [recentLoading, setRecentLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has("ref")) {
+      const referralId = params.get("ref") ?? "";
+      saveStaffReferralId(referralId);
+      setStaffReferralId(isStaffReferralId(referralId) ? referralId : null);
+      return;
+    }
+
+    setStaffReferralId(readStaffReferralId());
+  }, [location.search]);
+
+  useEffect(() => {
+    if (!staffReferralId) {
+      setStaffReferral(null);
+      setStaffReferralError("");
+      return;
+    }
+
+    let active = true;
+    setStaffReferralLoading(true);
+    setStaffReferralError("");
+    api.staffReferral(staffReferralId)
+      .then((staff) => {
+        if (active) setStaffReferral(staff);
+      })
+      .catch((reason: unknown) => {
+        if (active) {
+          setStaffReferral(null);
+          setStaffReferralError(reason instanceof Error ? reason.message : "Staff contact is unavailable");
+        }
+      })
+      .finally(() => active && setStaffReferralLoading(false));
+
+    return () => {
+      active = false;
+    };
+  }, [staffReferralId]);
 
   useEffect(() => {
     let active = true;
@@ -596,6 +651,28 @@ export function ProductPage() {
               Buy now <ArrowRight size={16} />
             </button>
           </div>
+          {staffReferral?.whatsappNumber ? (
+            <a
+              className="btn-line wide mt-3 inline-flex min-h-11 items-center justify-center gap-2"
+              href={staffWhatsAppUrl(
+                staffReferral.whatsappNumber,
+                `Hello ${staffReferral.firstName}, I am interested in ${product.name}: ${window.location.origin}${location.pathname}${location.search}`,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle size={16} />
+              Chat with {staffReferral.firstName} on WhatsApp
+            </a>
+          ) : staffReferralLoading ? (
+            <p className="mt-3 text-xs text-slate-500">Loading staff contact…</p>
+          ) : staffReferralError ? (
+            <p className="mt-3 text-xs text-rose-600" role="status">{staffReferralError}</p>
+          ) : staffReferral ? (
+            <p className="mt-3 text-xs text-slate-500">
+              Referred by {staffReferral.firstName} {staffReferral.lastName}. WhatsApp contact is not set yet.
+            </p>
+          ) : null}
         </div>
         <section className="section product-info-section">
           <div className="product-info-tabs" role="tablist" aria-label="Product information">

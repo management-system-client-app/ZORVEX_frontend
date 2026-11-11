@@ -98,6 +98,7 @@ const NAV = [
   { section: "Storefront", to: "/admin/size-guides", label: "Size guides", end: false, icon: "M4 6h16M4 12h16M4 18h10" },
   { section: "Storefront", to: "/admin/newsletter", label: "Newsletter", end: false, icon: "M4 6h16v12H4zM4 7l8 6 8-6" },
   { section: "Preferences", to: "/admin/settings", label: "Settings", end: false, icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" },
+  { section: "Preferences", to: "/admin/staff", label: "Staff", end: false, icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m8-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm7-3h6m-3-3v6" },
 ];
 
 export function AdminLayout() {
@@ -105,6 +106,7 @@ export function AdminLayout() {
   const { settings } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const visibleNav = NAV.filter((link) => link.to !== "/admin/staff" || user?.adminRole === "SUPER_ADMIN");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -123,7 +125,7 @@ export function AdminLayout() {
   if (!user) return <Navigate to="/login" replace />;
   if (user.accountType !== "ADMIN") return <Navigate to="/" replace />;
 
-  const title = NAV.find((link) => (link.end ? location.pathname === link.to : location.pathname.startsWith(link.to)))?.label ?? "Overview";
+  const title = visibleNav.find((link) => (link.end ? location.pathname === link.to : location.pathname.startsWith(link.to)))?.label ?? "Overview";
   const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 
   return (
@@ -140,9 +142,9 @@ export function AdminLayout() {
             </span>
           </div>
           <nav aria-label="Admin sections" className="flex flex-1 flex-col overflow-y-auto px-3 pb-3">
-            {NAV.map((link, index) => (
+            {visibleNav.map((link, index) => (
               <div key={link.to}>
-                {index === 0 || link.section !== NAV[index - 1].section ? <p className="admin-sidebar-section px-3 pt-4 pb-1.5">{link.section}</p> : null}
+                {index === 0 || link.section !== visibleNav[index - 1].section ? <p className="admin-sidebar-section px-3 pt-4 pb-1.5">{link.section}</p> : null}
                 <NavLink
                   to={link.to}
                   end={link.end}
@@ -663,12 +665,14 @@ function OrderTable({ orders }: { orders: AdminOrder[] }) {
   }
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[680px] text-left text-sm">
+      <table className="w-full min-w-[800px] text-left text-sm">
         <thead className="bg-[#171c24] text-[11px] tracking-[0.1em] text-slate-400 uppercase">
           <tr>
             <th className="px-5 py-3 font-medium"><span className="inline-flex items-center gap-1.5"><Icon d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21V3zM9 8h6M9 12h6" />Order</span></th>
             <th className="px-5 py-3 font-medium"><span className="inline-flex items-center gap-1.5"><Icon d="M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />Customer</span></th>
             <th className="px-5 py-3 font-medium"><span className="inline-flex items-center gap-1.5"><Icon d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0zM12 10h.01" />City</span></th>
+            <th className="px-5 py-3 font-medium">Referred by</th>
+            <th className="px-5 py-3 font-medium">Commission</th>
             <th className="px-5 py-3 font-medium"><span className="inline-flex items-center gap-1.5"><Icon d="M12 2v20m5-16H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />Total</span></th>
             <th className="px-5 py-3 font-medium"><span className="inline-flex items-center gap-1.5"><Icon d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11zM9 12l2 2 4-4" />Status</span></th>
           </tr>
@@ -694,6 +698,28 @@ function OrderTable({ orders }: { orders: AdminOrder[] }) {
                 </div>
               </td>
               <td className="px-5 py-3.5 text-slate-300">{order.shippingCity || "—"}</td>
+              <td className="px-5 py-3.5">
+                {order.referredByStaff ? (
+                  <span className="rounded-full border border-orange-700/40 bg-orange-950/20 px-2.5 py-1 text-xs text-orange-200">
+                    {order.referredByStaff.firstName} {order.referredByStaff.lastName}
+                  </span>
+                ) : <span className="text-xs text-slate-500">Direct</span>}
+              </td>
+              <td className="px-5 py-3.5">
+                {order.referredByStaff ? (
+                  <>
+                    <span className="font-medium text-emerald-200">
+                      {money(order.items.reduce(
+                        (total, item) => total + Number(item.commissionPerUnit) * item.quantity,
+                        0,
+                      ))}
+                    </span>
+                    <span className="mt-1 block text-[10px] text-slate-400">
+                      {order.staffCommissionPaidAt ? "Paid" : order.status === "DELIVERED" ? "Due" : "After delivery"}
+                    </span>
+                  </>
+                ) : <span className="text-xs text-slate-500">—</span>}
+              </td>
               <td className="px-5 py-3.5 font-semibold text-sky-200">{money(order.total)}</td>
               <td className="px-5 py-3.5"><StatusBadge status={order.status} /></td>
             </tr>
@@ -810,6 +836,12 @@ export function AdminOrderDetail() {
   }, [id]);
 
   const options = order ? NEXT_STATUS[order.status] ?? [] : [];
+  const commissionTotal = order
+    ? order.items.reduce(
+        (total, item) => total + Number(item.commissionPerUnit) * item.quantity,
+        0,
+      )
+    : 0;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -830,6 +862,21 @@ export function AdminOrderDetail() {
       setReason("");
     } catch (reasonError) {
       setError(reasonError instanceof ApiError ? reasonError.message : "Could not update the order");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function recordCommissionPayout() {
+    if (!order) return;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await api.recordStaffCommissionPayout(order.id);
+      setOrder(updated);
+      setNote("Staff commission payout recorded as paid.");
+    } catch (reasonError) {
+      setError(reasonError instanceof ApiError ? reasonError.message : "Could not record the staff commission payout");
     } finally {
       setBusy(false);
     }
@@ -861,6 +908,13 @@ export function AdminOrderDetail() {
               <Icon d="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13H4V6a1 1 0 0 1 1-1z" />
               Placed {when(order.placedAt)}
             </p>
+            <p className="mt-2 text-xs text-slate-400">
+              Referred by: <span className="font-medium text-orange-200">
+                {order.referredByStaff
+                  ? `${order.referredByStaff.firstName} ${order.referredByStaff.lastName}`
+                  : "Direct order"}
+              </span>
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
           {order.paymentMethod === "COD" ? (
@@ -888,7 +942,7 @@ export function AdminOrderDetail() {
           ) : null}
           </div>
         </div>
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <div className="flex items-center gap-3 rounded-xl border border-slate-700 bg-[#171c24] px-3.5 py-3">
             <span className="grid h-9 w-9 place-items-center rounded-lg border border-sky-800/50 bg-sky-950/25 text-sky-200"><Icon d="M3 7h18v13H3zM7 7V5h10v2M7 12h4" /></span>
             <div className="min-w-0">
@@ -909,6 +963,37 @@ export function AdminOrderDetail() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-sky-300">Order total</p>
               <p className="mt-0.5 text-base font-semibold text-sky-200">{money(order.total)}</p>
             </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-800/40 bg-emerald-950/15 px-3.5 py-3">
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-lg border border-emerald-800/50 bg-emerald-950/25 text-emerald-200"><Icon d="M12 2v20m5-16H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></span>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-300">Staff commission</p>
+                <p className="mt-0.5 text-sm font-semibold text-emerald-200">{money(commissionTotal)}</p>
+                <p className="text-[10px] text-slate-400">
+                  {order.referredByStaff
+                    ? order.staffCommissionPaidAt
+                      ? `Paid to ${order.referredByStaff.firstName}`
+                      : order.status === "DELIVERED"
+                        ? `Due to ${order.referredByStaff.firstName}`
+                        : "Payable after delivery"
+                    : "No staff referral"}
+                </p>
+              </div>
+            </div>
+            {order.referredByStaff &&
+            commissionTotal > 0 &&
+            order.status === "DELIVERED" &&
+            !order.staffCommissionPaidAt ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void recordCommissionPayout()}
+                className="rounded-lg border border-emerald-700/60 px-3 py-2 text-xs font-semibold text-emerald-200 transition-colors hover:bg-emerald-950/50 disabled:opacity-50"
+              >
+                {busy ? "Saving…" : "Mark paid"}
+              </button>
+            ) : null}
           </div>
         </div>
         {customerProfile ? (
@@ -944,6 +1029,11 @@ export function AdminOrderDetail() {
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <span className="rounded-md border border-slate-700 bg-[#171c24] px-2 py-0.5 text-[11px] text-slate-400">SKU {item.sku}</span>
                     <span className="rounded-md border border-sky-800/50 bg-sky-950/30 px-2 py-0.5 text-[11px] font-medium text-sky-200">Qty {item.quantity}</span>
+                    {order.referredByStaff ? (
+                      <span className="rounded-md border border-emerald-800/50 bg-emerald-950/25 px-2 py-0.5 text-[11px] text-emerald-200">
+                        Staff commission {money(Number(item.commissionPerUnit) * item.quantity)}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <p className="shrink-0 rounded-lg bg-[#171c24] px-2.5 py-1.5 font-semibold text-slate-100">{money(item.lineTotal)}</p>

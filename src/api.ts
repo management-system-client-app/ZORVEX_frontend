@@ -30,6 +30,8 @@ import type {
   ManualPayment,
   SavedAddress,
   VariantRow,
+  StaffAccount,
+  StaffReferral,
 } from "./types";
 import { prepareImageForUpload } from "./imageUpload";
 
@@ -384,14 +386,14 @@ export const api = {
     }
     return [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
   },
-  colorList: (limit = 100) => request<Color[]>(`/colors${qs({ limit })}`).then((res) => res.data),
+  colorList: (limit = 100) => request<Color[]>(`/catalog/colors${qs({ limit })}`).then((res) => res.data),
   createColor: (body: { name: string; hexCode: string }) =>
-    request<Color>("/colors", {
+    request<Color>("/catalog/colors", {
       method: "POST",
       body: JSON.stringify(body),
     }).then((res) => res.data),
   searchColors: (search: string) =>
-    request<Color[]>(`/colors${qs({ search })}`).then((res) => res.data),
+    request<Color[]>(`/catalog/colors${qs({ search })}`).then((res) => res.data),
   reviews: (productId: string) =>
     request<Review[]>(`/reviews/products/${productId}`).then((res) => ({
       items: res.data,
@@ -469,12 +471,41 @@ export const api = {
       items: res.data,
       meta: res.meta ?? { page: 1, limit: 20, total: res.data.length, totalPages: 1 },
     })),
+  staff: (fresh = false) =>
+    request<StaffAccount[]>("/staff", {}, { fresh }).then((res) => {
+      const activeCount = res.data.filter((staff) => staff.isActive).length;
+      return {
+        items: res.data,
+        meta: {
+          total: res.data.length,
+          activeCount,
+          limit: 20,
+          remaining: Math.max(0, 20 - activeCount),
+        },
+      };
+    }),
+  staffReferral: (id: string) =>
+    request<StaffReferral>(`/staff/referrals/${id}`).then((res) => res.data),
+  createStaff: (body: { firstName: string; lastName: string; email: string; whatsappNumber: string; temporaryPassword: string }) =>
+    request<StaffAccount>("/staff", { method: "POST", body: JSON.stringify(body) }).then((res) => res.data),
+  updateStaffContact: (id: string, whatsappNumber: string) =>
+    request<StaffAccount>(`/staff/${id}/contact`, {
+      method: "PATCH",
+      body: JSON.stringify({ whatsappNumber }),
+    }).then((res) => res.data),
+  updateStaffStatus: (id: string, isActive: boolean) =>
+    request<StaffAccount>(`/staff/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ isActive }),
+    }).then((res) => res.data),
   order: (id: string) => request<AdminOrder>(`/orders/${id}`).then((res) => res.data),
   updateOrderStatus: (id: string, body: { status: string; cancelReason?: string }) =>
     request<AdminOrder>(`/orders/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }).then((res) => res.data),
+  recordStaffCommissionPayout: (id: string) =>
+    request<AdminOrder>(`/orders/${id}/commission/paid`, { method: "PATCH" }).then((res) => res.data),
   login: async (email: string, password: string) => {
     const body = JSON.stringify({ email, password });
     try {
@@ -488,7 +519,7 @@ export const api = {
       };
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 401) throw error;
-      const admin = await request<{ token: string; user: User }>("/auth/admin/login", {
+      const admin = await request<{ token: string; user: User & { role?: User["adminRole"] } }>("/auth/admin/login", {
         method: "POST",
         body,
       });
@@ -502,6 +533,7 @@ export const api = {
           phone: null,
           avatarUrl: admin.data.user.avatarUrl ?? null,
           accountType: "ADMIN" as const,
+          adminRole: admin.data.user.role,
         },
       };
     }
@@ -515,9 +547,12 @@ export const api = {
     phone?: string;
   }) => request<User>("/users/register", { method: "POST", body: JSON.stringify(body) }).then((res) => res.data),
   me: () =>
-    request<User>("/users/me").then((res) => ({
+    request<User & { role?: User["adminRole"] }>("/users/me").then((res) => ({
       ...res.data,
       phone: res.data.phone ?? null,
+      ...(res.data.accountType === "ADMIN" && res.data.role
+        ? { adminRole: res.data.role }
+        : {}),
     })),
   defaultAddress: () => request<SavedAddress | null>("/users/me/address").then((res) => res.data),
   saveDefaultAddress: (body: Omit<SavedAddress, "id" | "isDefault" | "label"> & { label?: string }) =>

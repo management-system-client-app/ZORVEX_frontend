@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, BadgePercent, Headphones, LayoutGrid, Laptop, PackageSearch, ShieldCheck, Smartphone, Sparkles, Truck } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Headphones, Laptop, ShieldCheck, Smartphone, Sparkles, Truck } from "lucide-react";
 import { api, DATA_REFRESH_INTERVAL, hydrateImages } from "../api";
 import { categoryTiles } from "../components/Chrome";
 import { ProductCarousel } from "../components/ProductCard";
@@ -149,10 +149,6 @@ function HomePromoBanner({ banner }: { banner: HomeBlock }) {
       ) : (
         <img src={banner.imageUrl ?? undefined} alt={banner.title} loading="lazy" decoding="async" />
       )}
-      <span className="home-promo-image-caption">
-        <strong>{banner.title}</strong>
-        {banner.subtitle ? <span>{banner.subtitle}</span> : null}
-      </span>
     </Link>
   );
 }
@@ -186,6 +182,9 @@ export function HomePage() {
   const [campaigns, setCampaigns] = useState<HomeBlock[]>(() =>
     initialHome?.campaigns.filter((campaign) => campaign.imageUrl).slice(0, 2) ?? [],
   );
+  const [gadgetBanners, setGadgetBanners] = useState<HomeBlock[]>(() =>
+    initialHome?.gadgetBanners?.filter((banner) => banner.imageUrl).slice(0, 3) ?? [],
+  );
   const [dailyDeals, setDailyDeals] = useState<ProductCardData[]>(() => {
     const cachedDeals = readCachedDailyDeals();
     if (cachedDeals.length > 0) return cachedDeals;
@@ -198,6 +197,7 @@ export function HomePage() {
     initialArrival?.categoryId ? `/shop?categoryId=${initialArrival.categoryId}` : "/shop?sort=latest",
   );
   const [selectedTrending, setSelectedTrending] = useState<ProductCardData[]>(initialHome?.trendingProducts ?? []);
+  const [trendingCategoryId, setTrendingCategoryId] = useState("all");
   const [latestProducts, setLatestProducts] = useState<ProductCardData[]>(() =>
     readCachedProducts(LATEST_PRODUCTS_CACHE_KEY),
   );
@@ -225,6 +225,7 @@ export function HomePage() {
     cacheHome(home);
     setBanners(home.banners.filter((banner) => banner.imageUrl));
     setCampaigns(home.campaigns.filter((campaign) => campaign.imageUrl).slice(0, 2));
+    setGadgetBanners(home.gadgetBanners?.filter((banner) => banner.imageUrl).slice(0, 3) ?? []);
     const arrivalBlock = home.newArrivals[0];
     setArrivals(arrivalBlock?.products ?? []);
     setArrivalHref(arrivalBlock?.categoryId ? `/shop?categoryId=${arrivalBlock.categoryId}` : "/shop?sort=latest");
@@ -387,9 +388,24 @@ export function HomePage() {
   const collection = [...new Map([...latestProducts, ...arrivals].map((product) => [product.id, product])).values()]
     .slice(0, 12);
   const collectionHref = latestProducts.length > 0 ? "/shop?sort=latest" : arrivalHref;
+  const trendingProducts = selectedTrending.length > 0
+    ? selectedTrending
+    : best.length > 0
+      ? best
+      : latestProducts;
+  const trendingCategories = [...new Map(
+    trendingProducts.flatMap((product) => {
+      if (!product.category) return [];
+      const category = catalog.categories.find((item) => item.id === product.category?.id) ?? product.category;
+      return [[category.id, category] as const];
+    }),
+  ).values()];
+  const visibleTrending = trendingCategoryId === "all"
+    ? trendingProducts
+    : trendingProducts.filter((product) => product.category?.id === trendingCategoryId);
   const countdown = getCountdownParts(timeLeft);
   const hasHomeContent = Boolean(
-    banners.length || campaigns.length || tiles.length || deals.length || collection.length || best.length || selectedTrending.length,
+    banners.length || campaigns.length || gadgetBanners.length || tiles.length || deals.length || collection.length || best.length || selectedTrending.length,
   );
 
   return (
@@ -433,7 +449,7 @@ export function HomePage() {
         </div>
         {campaigns.length ? (
           <div className="home-hero-promos">
-            {campaigns.map((campaign) => <HomePromoBanner key={campaign.id} banner={campaign} />)}
+            {campaigns.slice(0, 2).map((campaign) => <HomePromoBanner key={campaign.id} banner={campaign} />)}
           </div>
         ) : null}
       </section>
@@ -443,29 +459,6 @@ export function HomePage() {
         <p>নতুন পণ্য, দারুণ অফার আর সারা দেশের পছন্দের কালেকশন—সব এক জায়গায়।</p>
         <Link to="/shop">এখনই দেখুন <ArrowUpRight size={14} aria-hidden="true" /></Link>
       </div>
-
-      <nav className="home-marketplace-strip" aria-label="Quick shopping links">
-        <Link to="/shop">
-          <span className="marketplace-strip-icon"><LayoutGrid size={18} /></span>
-          <span><strong>Shop all categories</strong><small>Explore the full marketplace</small></span>
-          <ArrowUpRight size={16} aria-hidden="true" />
-        </Link>
-        <Link to="/shop?sort=latest">
-          <span className="marketplace-strip-icon"><Sparkles size={18} /></span>
-          <span><strong>Just added</strong><small>See the latest products</small></span>
-          <ArrowUpRight size={16} aria-hidden="true" />
-        </Link>
-        <Link to="/shop?sort=price_asc">
-          <span className="marketplace-strip-icon"><BadgePercent size={18} /></span>
-          <span><strong>Budget finds</strong><small>Browse by lowest price</small></span>
-          <ArrowUpRight size={16} aria-hidden="true" />
-        </Link>
-        <Link to="/track">
-          <span className="marketplace-strip-icon"><PackageSearch size={18} /></span>
-          <span><strong>Track an order</strong><small>Check your delivery status</small></span>
-          <ArrowUpRight size={16} aria-hidden="true" />
-        </Link>
-      </nav>
 
       {tiles.length > 0 ? (
         <section className="section home-category-section">
@@ -518,7 +511,7 @@ export function HomePage() {
               See More
             </Link>
           </div>
-          <ProductCarousel products={deals} showAvailableStock dealCards />
+          <ProductCarousel products={deals} showAvailableStock dealCards autoSlide />
         </section>
       ) : null}
 
@@ -534,7 +527,7 @@ export function HomePage() {
               See More
             </Link>
           </div>
-          <ProductCarousel products={collection} />
+          <ProductCarousel products={collection} autoSlide />
         </section>
       ) : null}
 
@@ -550,23 +543,55 @@ export function HomePage() {
               See More
             </Link>
           </div>
-          <ProductCarousel products={best} />
+          <ProductCarousel products={best} autoSlide />
         </section>
       ) : null}
 
-      {selectedTrending.length > 0 ? (
-        <section className="section home-product-section">
-          <div className="section-head">
-            <div className="home-section-heading">
-              <span className="home-section-kicker">TRENDING NOW</span>
-              <h2>Popular picks</h2>
-              <p>See what’s catching everyone’s eye right now.</p>
+      {gadgetBanners.length > 0 ? (
+        <section className="home-gadget-showcase" aria-labelledby="home-gadget-showcase-title">
+          <div className="home-gadget-showcase-heading">
+            <h2 id="home-gadget-showcase-title">Gadget Festive</h2>
+          </div>
+          <div className="home-gadget-showcase-grid">
+            {gadgetBanners.map((banner) => (
+              <HomePromoBanner key={banner.id} banner={banner} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {trendingProducts.length > 0 ? (
+        <section className="section home-product-section home-trending-section">
+          <div className="trending-section-head">
+            <div className="trending-title-and-filters">
+              <h2>Trending Now</h2>
+              <div className="trending-category-filters" aria-label="Filter trending products by category">
+                <button
+                  type="button"
+                  className={trendingCategoryId === "all" ? "is-active" : ""}
+                  aria-pressed={trendingCategoryId === "all"}
+                  onClick={() => setTrendingCategoryId("all")}
+                >
+                  All
+                </button>
+                {trendingCategories.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    className={trendingCategoryId === category.id ? "is-active" : ""}
+                    aria-pressed={trendingCategoryId === category.id}
+                    onClick={() => setTrendingCategoryId(category.id)}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
             </div>
             <Link className="see-more" to="/shop">
               See More
             </Link>
           </div>
-          <ProductCarousel products={selectedTrending} />
+          <ProductCarousel key={trendingCategoryId} products={visibleTrending} autoSlide />
         </section>
       ) : null}
 

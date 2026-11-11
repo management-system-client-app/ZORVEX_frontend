@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import { Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { MessageCircle, Phone, X } from "lucide-react";
 import { Footer, Header } from "./components/Chrome";
 import { AccountCoupons, AccountDashboard, AccountLayout, AccountNotifications, AccountOrders, AccountProfile, AccountReturns, AccountReviews, AuthCallbackPage, CartPage, ChangePasswordPage, CmsPageView, DeliveryAddressPage, ForgotPage, LoginPage, OutletsPage, RegisterPage, ResetPage, TrackPage, WishlistPage } from "./pages/AccountPages";
 import { AdminLayout, AdminOrderDetail, AdminOrders, AdminOverview, AdminProducts } from "./pages/AdminDashboard";
@@ -20,11 +21,67 @@ import {
   AdminVariants,
 } from "./pages/AdminResources";
 import { AdminProductForm } from "./pages/AdminProductForm";
+import { AdminStaff } from "./pages/AdminStaff";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { HomePage } from "./pages/HomePage";
 import { ProductPage } from "./pages/ProductPage";
 import { ShopPage } from "./pages/ShopPage";
 import { ToastViewport } from "./components/ToastViewport";
+import { useStore } from "./state";
+import { saveStaffReferralId } from "./staffReferral";
+
+function SupportChat() {
+  const { settings } = useStore();
+  const [open, setOpen] = useState(false);
+  const phone = settings.supportPhone || "+88-01885-998899";
+  const phoneDigits = phone.replace(/\D/g, "");
+  const whatsappNumber = phoneDigits.startsWith("880")
+    ? phoneDigits.replace(/^8800/, "880")
+    : phoneDigits.startsWith("0")
+      ? `88${phoneDigits}`
+      : phoneDigits;
+  const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hello, I need help with my order.")}`;
+
+  return (
+    <div className="support-chat">
+      {open ? (
+        <section className="support-chat-panel" aria-labelledby="support-chat-title">
+          <div className="support-chat-heading">
+            <span className="support-chat-heading-icon" aria-hidden="true"><MessageCircle size={18} /></span>
+            <div>
+              <h2 id="support-chat-title">Need a hand?</h2>
+              <p>Our support team is here to help.</p>
+            </div>
+            <button type="button" className="support-chat-close" aria-label="Close support options" onClick={() => setOpen(false)}>
+              <X size={18} />
+            </button>
+          </div>
+          <a className="support-chat-link" href={`tel:${phone}`}>
+            <Phone size={16} aria-hidden="true" />
+            <span><strong>Call us</strong><small>{phone}</small></span>
+          </a>
+          <a className="support-chat-link" href={whatsappHref} target="_blank" rel="noopener noreferrer">
+            <MessageCircle size={16} aria-hidden="true" />
+            <span><strong>Chat on WhatsApp</strong><small>Message our support team</small></span>
+          </a>
+          <Link className="support-chat-contact" to="/pages/contact" onClick={() => setOpen(false)}>
+            Visit contact page
+          </Link>
+        </section>
+      ) : null}
+      <button
+        type="button"
+        className={`support-chat-toggle${open ? " is-open" : ""}`}
+        aria-label={open ? "Close support options" : "Open support options"}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {open ? <X size={22} /> : <MessageCircle size={22} />}
+        {!open ? <span>Support</span> : null}
+      </button>
+    </div>
+  );
+}
 
 function StoreShell() {
   return (
@@ -36,16 +93,54 @@ function StoreShell() {
         </div>
       </main>
       <Footer />
+      <SupportChat />
     </div>
   );
 }
 
 function RouteScrollReset() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
 
   useLayoutEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    if (!hash) {
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    const targetId = hash.slice(1);
+    let frame = 0;
+    const scrollToTarget = () => {
+      const target = document.getElementById(targetId);
+      if (!target) return false;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+      return true;
+    };
+    const observer = new MutationObserver(scrollToTarget);
+    observer.observe(document.body, { childList: true, subtree: true });
+    frame = window.requestAnimationFrame(scrollToTarget);
+    const timeout = window.setTimeout(() => observer.disconnect(), 10000);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+      observer.disconnect();
+    };
+  }, [pathname, hash]);
+
+  return null;
+}
+
+function StaffReferralCapture() {
+  const { search } = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.has("ref")) {
+      saveStaffReferralId(params.get("ref") ?? "");
+    }
+  }, [search]);
 
   return null;
 }
@@ -75,6 +170,7 @@ export function App() {
   return (
     <>
       <RouteScrollReset />
+      <StaffReferralCapture />
       <ReloadIndicator />
       <ToastViewport />
       <Routes>
@@ -95,6 +191,7 @@ export function App() {
         <Route path="delivery" element={<AdminDelivery />} />
         <Route path="newsletter" element={<AdminNewsletter />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="staff" element={<AdminStaff />} />
         <Route path="returns" element={<AdminReturns />} />
         <Route path="payments" element={<AdminPayments />} />
         <Route path="size-guides" element={<AdminSizeGuides />} />

@@ -267,8 +267,8 @@ export function Header() {
         <div className="header-container">
         <div className="topbar">
           <div className="header-brands">
-            <Link to="/" className="logo sara-logo" aria-label="ResellKori home">
-              <span className="sara-logo-main">Resell<span className="resell-logo-accent">Kori</span></span>
+            <Link to="/" className="logo sara-logo" aria-label="Shopnex home">
+              <span className="sara-logo-main">Shop<span className="resell-logo-accent">nex</span></span>
               <span className="sara-logo-sub">SMART SHOPPING · BETTER VALUE</span>
             </Link>
           </div>

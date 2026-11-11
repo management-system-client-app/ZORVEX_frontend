@@ -34,7 +34,7 @@ export type Category = {
 
 export type AdminHomeBlock = {
   id: string;
-  kind: "BANNER" | "CAMPAIGN" | "NEW_ARRIVAL" | "TRENDING";
+  kind: "BANNER" | "CAMPAIGN" | "GADGET_FESTIVE" | "NEW_ARRIVAL" | "TRENDING";
   title: string;
   subtitle: string | null;
   imageUrl: string | null;
@@ -56,6 +56,7 @@ export type Catalog = {
   brands: Brand[];
   categories: Category[];
   sizes: Size[];
+  colors: Color[];
   fabrics: Fabric[];
 };
 
@@ -84,6 +85,7 @@ export type ProductCardData = {
   variants?: {
     stock: number;
     reserved?: number;
+    isActive?: boolean;
     optionLabel?: string | null;
     color?: { id: string; name: string; hexCode: string } | null;
   }[];
@@ -112,11 +114,12 @@ export type ProductDetail = Omit<ProductCardData, "variants"> & {
   brand: { id: string; name: string; slug: string; logoUrl?: string | null };
   images: ProductImage[];
   variants: Variant[];
+  commissionPerUnit?: string | number;
 };
 
 export type HomeBlock = {
   id: string;
-  kind: "BANNER" | "CAMPAIGN" | "NEW_ARRIVAL" | "TRENDING";
+  kind: "BANNER" | "CAMPAIGN" | "GADGET_FESTIVE" | "NEW_ARRIVAL" | "TRENDING";
   title: string;
   subtitle: string | null;
   imageUrl: string | null;
@@ -129,6 +132,7 @@ export type HomeBlock = {
 export type HomePayload = {
   banners: HomeBlock[];
   campaigns: HomeBlock[];
+  gadgetBanners?: HomeBlock[];
   newArrivals: HomeBlock[];
   trendingProducts: ProductCardData[];
 };
@@ -168,6 +172,30 @@ export type User = {
   phone: string | null;
   avatarUrl?: string | null;
   accountType?: "USER" | "ADMIN";
+  adminRole?: "SUPER_ADMIN" | "MANAGER" | "SUPPORT";
+};
+
+export type StaffAccount = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  whatsappNumber: string | null;
+  commissionDue?: number;
+  commissionPaid?: number;
+  role: "SUPPORT";
+  avatarUrl: string | null;
+  isActive: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StaffReferral = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  whatsappNumber: string | null;
 };
 
 export type SavedAddress = {
@@ -198,6 +226,7 @@ export type AdminOrderItem = {
   sku: string;
   quantity: number;
   lineTotal: string | number;
+  commissionPerUnit: string | number;
 };
 
 export type AdminOrder = {
@@ -211,6 +240,8 @@ export type AdminOrder = {
   currency: string;
   placedAt: string;
   guestEmail: string | null;
+  referredByStaff: { id: string; firstName: string; lastName: string } | null;
+  staffCommissionPaidAt: string | null;
   shippingFullName: string;
   shippingPhone: string;
   shippingLine1: string;

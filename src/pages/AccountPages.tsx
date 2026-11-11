@@ -64,8 +64,8 @@ function StandaloneAuthLayout({ activeTab, children }: { activeTab: "login" | "r
         <Link className="login-back" to="/">
           <ArrowLeft size={14} strokeWidth={1.8} /> Back To Home
         </Link>
-        <div className="login-brand-row" aria-label="ResellKori">
-          <strong className="login-brand-resell">Resell<span>Kori</span></strong>
+        <div className="login-brand-row" aria-label="Shopnex">
+          <strong className="login-brand-resell">Shop<span>nex</span></strong>
           <span className="login-brand-tagline">SMART SHOPPING · BETTER VALUE</span>
         </div>
         <section className="login-card">

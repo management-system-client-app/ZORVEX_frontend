@@ -26,7 +26,8 @@ const COLLAGE_SLOTS: { id: CollageSlot; label: string; setting: keyof Settings }
 
 const KINDS = [
   { id: "BANNER", label: "Slider banner" },
-  { id: "CAMPAIGN", label: "Offer banner" },
+  { id: "CAMPAIGN", label: "Top-right offer banner" },
+  { id: "GADGET_FESTIVE", label: "Gadget Festive banner" },
   { id: "NEW_ARRIVAL", label: "New arrivals" },
   { id: "TRENDING", label: "Trending Now products" },
 ] as const;
@@ -40,6 +41,7 @@ function placementFor(block: AdminHomeBlock, orderedKindBlocks: AdminHomeBlock[]
   if (block.kind === "BANNER") return `Top slider · Slide ${position}`;
   if (block.kind === "NEW_ARRIVAL") return "New Collection product row";
   if (block.kind === "TRENDING") return "Trending Now product row";
+  if (block.kind === "GADGET_FESTIVE") return `Gadget Festive · Image ${position}`;
   if (position <= 2) return `Top-right image ${position}`;
   return "Not displayed on homepage";
 }
@@ -423,7 +425,7 @@ export function AdminBanners() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    if ((kind === "BANNER" || kind === "CAMPAIGN") && !image && !currentImage) {
+    if (["BANNER", "CAMPAIGN", "GADGET_FESTIVE"].includes(kind) && !image && !currentImage) {
       setError("Add an image for this banner");
       return;
     }
@@ -507,7 +509,12 @@ export function AdminBanners() {
         </label>
         {kind === "CAMPAIGN" ? (
           <p className="rounded-xl border border-slate-700 bg-[#171c24] p-3 text-xs leading-relaxed text-slate-400">
-            The first two active offer banners by Sort order appear as the two images beside the top slider. Additional offer banners are not displayed on the homepage.
+            The first two active offer banners by Sort order appear beside the top slider. These images are separate from Gadget Festive.
+          </p>
+        ) : null}
+        {kind === "GADGET_FESTIVE" ? (
+          <p className="rounded-xl border border-slate-700 bg-[#171c24] p-3 text-xs leading-relaxed text-slate-400">
+            These images appear above Trending Now and are managed separately from the top slider and offer banners.
           </p>
         ) : null}
         {kind === "TRENDING" ? (
@@ -662,7 +669,7 @@ export function AdminBanners() {
           const group = blocks
             .filter((block) => block.kind === item.id)
             .sort((first, second) => first.sortOrder - second.sortOrder);
-          if (group.length === 0 && item.id !== "CAMPAIGN") return null;
+          if (group.length === 0 && item.id !== "CAMPAIGN" && item.id !== "GADGET_FESTIVE") return null;
 
           return (
             <Fragment key={item.id}>

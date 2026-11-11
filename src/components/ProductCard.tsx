@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { coverImage, money, productFlags } from "../format";
@@ -20,11 +20,15 @@ export function ProductCard({
   const flags = productFlags(product);
   const discount = flags.compare != null ? Math.round(((flags.compare - flags.price) / flags.compare) * 100) : null;
   const savings = flags.compare != null ? flags.compare - flags.price : 0;
-  const availableStock =
-    product.variants?.reduce((total, variant) => total + Math.max(variant.stock - (variant.reserved ?? 0), 0), 0) ?? 0;
-  const soldOut = Boolean(product.variants?.length) && availableStock === 0;
+  const availableStock = product.variants?.reduce(
+    (total, variant) =>
+      total + (variant.isActive === false ? 0 : Math.max(variant.stock - (variant.reserved ?? 0), 0)),
+    0,
+  ) ?? 0;
+  const soldOut = Array.isArray(product.variants) && availableStock === 0;
+
   return (
-    <article className={`card${dealCard ? " deal-card" : ""}${shopCard ? " shop-product-card" : ""}`}>
+    <article className={`card${dealCard ? " deal-card" : ""}${shopCard ? " shop-product-card" : ""}${soldOut ? " sold-out" : ""}`}>
       <Link to={`/product/${product.id}`} onClick={() => recordRecentlyViewed(product.id, product)}>
         <div className={`card-photo${shopCard ? " shop-card-media" : ""}`}>
           {image ? (
@@ -33,7 +37,7 @@ export function ProductCard({
           {dealCard ? (
             savings > 0 || flags.isNew || soldOut ? (
               <div className="deal-card-badges">
-                {savings > 0 ? <span className="deal-savings">Save {money(savings)} ↓</span> : null}
+              {savings > 0 ? <span className="deal-savings">{discount ? `${discount}% OFF · ` : ""}Save {money(savings)}</span> : null}
                 {flags.isNew || soldOut ? (
                   <div className="flags">
                     {soldOut ? <span className="flag sold-out-flag">Sold out</span> : null}
@@ -46,7 +50,7 @@ export function ProductCard({
             <div className="flags">
               {soldOut ? <span className="flag sold-out-flag">Sold out</span> : null}
               {flags.isNew ? <span className="flag">New</span> : null}
-              {flags.onSale ? <span className="flag sale-flag">{discount ? `-${discount}%` : "Sale"}</span> : null}
+              {flags.onSale ? <span className="flag sale-flag">{discount ? `${discount}% OFF` : "Sale"}</span> : null}
             </div>
           ) : null}
         </div>
@@ -79,15 +83,63 @@ export function ProductCarousel({
   products,
   showAvailableStock = false,
   dealCards = false,
+  autoSlide = false,
 }: {
   products: ProductCardData[];
   showAvailableStock?: boolean;
   dealCards?: boolean;
+  autoSlide?: boolean;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
+  const paused = useRef(false);
+  const autoSlideStopped = useRef(false);
+
+  useEffect(() => {
+    if (!autoSlide || products.length < 2 || autoSlideStopped.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const timer = window.setInterval(() => {
+      const row = rowRef.current;
+      if (!row || paused.current || document.visibilityState !== "visible") return;
+
+      const cards = Array.from(row.children).filter((card): card is HTMLElement => card instanceof HTMLElement);
+      if (cards.length < 2) return;
+
+      const positions = cards.map((card) =>
+        card.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft,
+      );
+      const currentIndex = cards.reduce(
+        (current, _card, index) => (positions[index] <= row.scrollLeft + 2 ? index : current),
+        0,
+      );
+      const nextIndex = currentIndex + 1;
+      if (nextIndex >= cards.length) {
+        autoSlideStopped.current = true;
+        window.clearInterval(timer);
+        return;
+      }
+
+      const maxScroll = Math.max(row.scrollWidth - row.clientWidth, 0);
+      const nextPosition = Math.min(positions[nextIndex], maxScroll);
+      row.scrollTo({ left: nextPosition, behavior: "smooth" });
+      if (nextIndex === cards.length - 1 || nextPosition >= maxScroll - 1) {
+        autoSlideStopped.current = true;
+        window.clearInterval(timer);
+      }
+    }, 4500);
+
+    return () => window.clearInterval(timer);
+  }, [autoSlide, products.length]);
 
   return (
-    <div className="product-carousel">
+    <div
+      className="product-carousel"
+      onMouseEnter={() => { paused.current = true; }}
+      onMouseLeave={() => { paused.current = false; }}
+      onFocusCapture={() => { paused.current = true; }}
+      onBlurCapture={(event) => {
+        if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) paused.current = false;
+      }}
+    >
       <div className="product-row" ref={rowRef}>
         {products.map((product) => (
           <ProductCard

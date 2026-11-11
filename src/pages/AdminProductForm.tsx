@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../api";
 import { DetailSkeleton } from "../components/Skeleton";
-import { useStore } from "../state";
+import { useAuth, useStore } from "../state";
 import type { Color, ProductImage } from "../types";
 
 type SizeRow = { sizeId: string; fabricId: string; colorId: string; stock: string };
@@ -87,12 +87,15 @@ export function AdminProductForm() {
   const { id } = useParams();
   const editing = Boolean(id);
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { catalog } = useStore();
+  const canManageStaffCommission = user?.adminRole === "SUPER_ADMIN";
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("ACTIVE");
   const [gender, setGender] = useState("UNISEX");
   const [basePrice, setBasePrice] = useState("");
+  const [commissionPerUnit, setCommissionPerUnit] = useState("0");
   const [compareAtPrice, setCompareAtPrice] = useState("");
   const [brandId, setBrandId] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -135,6 +138,7 @@ export function AdminProductForm() {
         setStatus(product.status);
         setGender(product.gender);
         setBasePrice(String(product.basePrice));
+        setCommissionPerUnit(String(product.commissionPerUnit ?? 0));
         setCompareAtPrice(product.compareAtPrice == null ? "" : String(product.compareAtPrice));
         setBrandId(product.brand.id);
         setCategoryId(product.category.id);
@@ -242,6 +246,15 @@ export function AdminProductForm() {
       setError("Compare price must be greater than the price");
       return;
     }
+    const commission = Number(commissionPerUnit);
+    if (
+      !Number.isFinite(commission) ||
+      commission < 0 ||
+      Math.abs(commission * 100 - Math.round(commission * 100)) >= 1e-6
+    ) {
+      setError("Staff commission must be a non-negative amount with up to 2 decimal places");
+      return;
+    }
 
     setBusy(true);
     try {
@@ -252,6 +265,7 @@ export function AdminProductForm() {
           status,
           gender,
           basePrice: price,
+          ...(canManageStaffCommission ? { commissionPerUnit: commission } : {}),
           compareAtPrice: compare ?? null,
           brandId,
           categoryId,
@@ -290,6 +304,7 @@ export function AdminProductForm() {
           status,
           gender,
           basePrice: price,
+          ...(canManageStaffCommission ? { commissionPerUnit: commission } : {}),
           ...(compare != null ? { compareAtPrice: compare } : {}),
           brandId,
           categoryId,
@@ -366,6 +381,20 @@ export function AdminProductForm() {
           <span className="text-slate-500">Compare price</span>
           <input className={fieldClass} inputMode="decimal" value={compareAtPrice} onChange={(event) => setCompareAtPrice(event.target.value)} />
         </label>
+        {canManageStaffCommission ? (
+          <label className="grid gap-1.5 text-sm">
+            <span className="text-slate-500">Staff commission per unit (৳)</span>
+            <input
+              className={fieldClass}
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={commissionPerUnit}
+              onChange={(event) => setCommissionPerUnit(event.target.value)}
+            />
+            <span className="text-xs text-slate-500">This amount is earned for each unit after an attributed order is delivered.</span>
+          </label>
+        ) : null}
         <label className="grid gap-1.5 text-sm">
           <span className="text-slate-500">Category</span>
           <select

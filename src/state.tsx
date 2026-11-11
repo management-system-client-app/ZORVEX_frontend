@@ -287,6 +287,7 @@ const fallbackCatalog: Catalog = {
   brands: [],
   categories: [],
   sizes: [],
+  colors: [],
   fabrics: [],
 };
 
