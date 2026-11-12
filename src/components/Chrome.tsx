@@ -316,7 +316,10 @@ export function Header() {
                 }) : <p className="search-suggestions-state">No matching products</p>}
               </div>
             ) : null}
-            <button type="submit" aria-label="Search"><Search size={20} strokeWidth={1.7} /></button>
+            <button type="submit" aria-label="Search">
+              <Search className="search-submit-icon" size={20} strokeWidth={1.7} />
+              <ArrowRight className="home-search-arrow" size={20} strokeWidth={1.7} />
+            </button>
           </form>
           <nav className="header-promo-links" aria-label="Store offers">
             <Link to="/#daily-deals"><Gift size={19} /><span><strong>Offers</strong><small>Latest offers</small></span></Link>

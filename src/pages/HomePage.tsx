@@ -473,7 +473,7 @@ export function HomePage() {
               <h2>Explore categories</h2>
               <p>Everyday essentials, electronics and more—all in one place.</p>
             </div>
-            <Link className="see-more" to="/shop">All categories <ArrowRight size={14} /></Link>
+            <Link className="see-more" to="/shop">All categories</Link>
           </div>
           <div className="cat-row">
             {tiles.map(({ category, image }) => (

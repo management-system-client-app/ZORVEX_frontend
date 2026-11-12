@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, Clock3, Heart, MessageCircle, PackageCheck, Ruler, Store } from "lucide-react";
+import { ArrowRight, Clock3, MessageCircle, PackageCheck, Ruler, Store } from "lucide-react";
 import { ApiError, api, DATA_REFRESH_INTERVAL } from "../api";
 import { ProductCarousel } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
@@ -118,7 +118,6 @@ export function ProductPage() {
   const [staffReferral, setStaffReferral] = useState<StaffReferral | null>(null);
   const [staffReferralError, setStaffReferralError] = useState("");
   const [staffReferralLoading, setStaffReferralLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [relatedLoading, setRelatedLoading] = useState(true);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: "", comment: "" });
@@ -365,6 +364,14 @@ export function ProductPage() {
   const flags = productFlags(product);
   const unit = selected?.price != null ? Number(selected.price) : flags.price;
   const available = selected ? Math.max(selected.stock - (selected.reserved ?? 0), 0) : 0;
+  const selectedOptionSummary = [
+    selected?.optionLabel,
+    selected?.size?.name,
+    selected?.color?.name,
+    selected?.fabric?.name,
+  ]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(" · ") || "Not specified";
   const supportPhone = settings.supportPhone || "+88-01885-998899";
   const productChatUrl = staffWhatsAppUrl(
     supportPhone,
@@ -424,25 +431,6 @@ export function ProductPage() {
       navigate("/checkout");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not add to cart");
-    }
-  }
-
-  async function toggleWish() {
-    if (!user) {
-      window.location.assign("/login");
-      return;
-    }
-    try {
-      if (saved) {
-        await api.removeWishlist(product!.id);
-        setSaved(false);
-      } else {
-        await api.saveWishlist(product!.id);
-        setSaved(true);
-      }
-      window.dispatchEvent(new Event("wishlist-updated"));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Wishlist failed");
     }
   }
 
@@ -510,9 +498,6 @@ export function ProductPage() {
                 <small>{reviewsLoading ? "Loading rating" : average > 0 ? `${average.toFixed(1)} (${reviews.length} ratings)` : "No ratings yet"}</small>
               </p>
             </div>
-            <button type="button" className={`product-wishlist${saved ? " is-saved" : ""}`} onClick={toggleWish} aria-label={saved ? "Remove from wishlist" : "Add to wishlist"} aria-pressed={saved}>
-              <Heart size={20} fill={saved ? "currentColor" : "none"} />
-            </button>
           </div>
           <p className="product-price">
             <strong>{money(unit)}</strong>
@@ -527,6 +512,11 @@ export function ProductPage() {
             <span>Sold by: <strong>{product.brand.name}</strong></span>
             <span>Category: <Link to={`/shop?categoryId=${product.category.id}`}>{product.category.name}</Link></span>
           </div>
+          <section className="product-options-panel" aria-label="Product options">
+            <header className="product-options-heading">
+              <span>Product Options</span>
+              <strong>{selectedOptionSummary}</strong>
+            </header>
           {generalOptions.length > 1 || generalOptions.some((variant) => variant.optionLabel?.trim()) ? (
             <>
               <p className="option-label">Choose an option</p>
@@ -553,16 +543,16 @@ export function ProductPage() {
               <p className="option-label">Size</p>
               <div className="sizes">
                 {sizes.map((size) => (
-              <button
-                key={size.id}
-                type="button"
-                className={sizeId === size.id ? "size-btn on" : "size-btn"}
-                disabled={!hasAvailableVariant(variants.filter((variant) => variant.size?.id === size.id))}
-                onClick={() => chooseSize(size.id)}
-              >
-                {size.name}
-              </button>
-            ))}
+                  <button
+                    key={size.id}
+                    type="button"
+                    className={sizeId === size.id ? "size-btn on" : "size-btn"}
+                    disabled={!hasAvailableVariant(variants.filter((variant) => variant.size?.id === size.id))}
+                    onClick={() => chooseSize(size.id)}
+                  >
+                    {size.name}
+                  </button>
+                ))}
               </div>
             </>
           ) : null}
@@ -648,6 +638,7 @@ export function ProductPage() {
               </button>
             </div>
           </div>
+          </section>
           {error ? <p className="error">{error}</p> : null}
           <div className="product-actions">
             <button className="btn wide" type="button" disabled={busy || available < 1} onClick={onAdd}>
