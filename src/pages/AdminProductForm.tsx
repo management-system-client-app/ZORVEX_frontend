@@ -14,9 +14,11 @@ const fieldClass =
   "h-11 w-full rounded-xl border border-slate-600 bg-[#171c24] px-3 text-sm text-white outline-none transition-all duration-200 ease-out placeholder:text-slate-500 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20";
 
 function messageOf(reason: unknown, fallback: string) {
-  if (!(reason instanceof ApiError)) return fallback;
-  const detail = reason.errors?.[0]?.message;
-  return detail ? `${reason.message}. ${detail}` : reason.message;
+  if (reason instanceof ApiError) {
+    const detail = reason.errors?.[0]?.message;
+    return detail ? `${reason.message}. ${detail}` : reason.message;
+  }
+  return reason instanceof Error && reason.message ? reason.message : fallback;
 }
 
 function ColorImagePicker({

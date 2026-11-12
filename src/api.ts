@@ -179,7 +179,15 @@ async function performRequest<T>(path: string, init: RequestInit): Promise<Envel
   const body = (await response.json().catch(() => null)) as Envelope<T> | null;
   if (!response.ok || !body || body.success === false) {
     if (response.status === 401) sessionStore.setToken(null);
-    throw new ApiError(body?.message || "Request failed", response.status, body?.errors);
+    const responseMessage = body?.message?.trim();
+    const message = !responseMessage
+      ? response.ok
+        ? "The server returned an invalid response"
+        : `Request failed (HTTP ${response.status})`
+      : /^request failed\.?$/i.test(responseMessage)
+        ? `${responseMessage} (HTTP ${response.status})`
+        : responseMessage;
+    throw new ApiError(message, response.status, body?.errors);
   }
   return body;
 }
