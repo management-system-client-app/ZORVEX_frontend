@@ -1,12 +1,13 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../api";
+import { ensureStandardFabrics } from "../catalogOptions";
 import { DetailSkeleton } from "../components/Skeleton";
 import { useAuth, useStore } from "../state";
-import type { Color, ProductImage } from "../types";
+import type { Color, Fabric, ProductImage } from "../types";
 
 type SizeRow = { sizeId: string; fabricId: string; colorId: string; stock: string };
-type GeneralVariantRow = { optionLabel: string; sku: string; stock: string };
+type GeneralVariantRow = { optionLabel: string; sku: string; stock: string; fabricId: string };
 const MAX_PRODUCT_IMAGES = 6;
 
 const fieldClass =
@@ -101,13 +102,14 @@ export function AdminProductForm() {
   const [categoryId, setCategoryId] = useState("");
   const [inventoryMode, setInventoryMode] = useState<"general" | "apparel">("general");
   const [generalVariants, setGeneralVariants] = useState<GeneralVariantRow[]>([
-    { optionLabel: "", sku: "", stock: "0" },
+    { optionLabel: "", sku: "", stock: "0", fabricId: "" },
   ]);
   const [rows, setRows] = useState<SizeRow[]>([]);
   const [selectedSizeIds, setSelectedSizeIds] = useState<string[]>([]);
   const [selectedColorIds, setSelectedColorIds] = useState<string[]>([]);
   const [bulkFabricId, setBulkFabricId] = useState("");
   const [colors, setColors] = useState<Color[]>([]);
+  const [fabrics, setFabrics] = useState<Fabric[]>(catalog.fabrics);
   const [productColorIds, setProductColorIds] = useState<string[]>([]);
   const [images, setImages] = useState<File[]>([]);
   const [imageColorIds, setImageColorIds] = useState<(string | null)[]>([]);
@@ -126,6 +128,22 @@ export function AdminProductForm() {
     api.colorList().then(setColors).catch((reason) => {
       setError(messageOf(reason, "Could not load colors"));
     });
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    ensureStandardFabrics()
+      .then(({ fabrics: refreshed, error: seedError }) => {
+        if (!active) return;
+        setFabrics(refreshed);
+        if (seedError) setError(messageOf(seedError, "Some standard fabrics could not be added"));
+      })
+      .catch((reason) => {
+        if (active) setError(messageOf(reason, "Could not load fabrics"));
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -246,6 +264,17 @@ export function AdminProductForm() {
       setError("Compare price must be greater than the price");
       return;
     }
+    if (inventoryMode === "general") {
+      const selectedFabrics = generalVariants.map((row) => row.fabricId).filter(Boolean);
+      if (selectedFabrics.length > 0 && selectedFabrics.length !== generalVariants.length) {
+        setError("Choose a fabric for every option, or leave fabric unselected for all options.");
+        return;
+      }
+      if (new Set(selectedFabrics).size !== selectedFabrics.length) {
+        setError("Each option must use a different fabric.");
+        return;
+      }
+    }
     const commission = Number(commissionPerUnit);
     if (
       !Number.isFinite(commission) ||
@@ -288,6 +317,7 @@ export function AdminProductForm() {
         ? generalVariants.map((row) => ({
             optionLabel: row.optionLabel.trim() || "Standard",
             ...(row.sku.trim() ? { sku: row.sku.trim().toUpperCase() } : {}),
+            ...(row.fabricId ? { fabricId: row.fabricId } : {}),
             stock: Number(row.stock) || 0,
           }))
         : undefined;
@@ -472,12 +502,21 @@ export function AdminProductForm() {
           </div>
           {inventoryMode === "general" ? (
             <div className="space-y-4">
-              <p className="text-xs text-slate-400">Add one inventory option per sellable item, such as a phone storage size, scent, pack size, or a standard item.</p>
+              <p className="text-xs text-slate-400">Add one inventory option per sellable item. Choose a fabric for every option or leave fabric unselected for all.</p>
               {generalVariants.map((row, index) => (
-                <div key={index} className="grid gap-3 rounded-xl border border-slate-700 bg-[#171c24] p-3 sm:grid-cols-[1fr_1fr_110px_auto]">
+                <div key={index} className="grid gap-3 rounded-xl border border-slate-700 bg-[#171c24] p-3 sm:grid-cols-[1fr_1fr_1fr_110px_auto]">
                   <label className="grid gap-1 text-xs text-slate-400">
                     Option label
                     <input className={fieldClass} placeholder="e.g. 128 GB / Black" value={row.optionLabel} onChange={(event) => updateGeneralVariant(index, "optionLabel", event.target.value)} />
+                  </label>
+                  <label className="grid gap-1 text-xs text-slate-400">
+                    Fabric
+                    <select className={fieldClass} aria-label={`Fabric for option ${index + 1}`} value={row.fabricId} onChange={(event) => updateGeneralVariant(index, "fabricId", event.target.value)}>
+                      <option value="">No fabric</option>
+                      {fabrics.map((fabric) => (
+                        <option key={fabric.id} value={fabric.id}>{fabric.name}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="grid gap-1 text-xs text-slate-400">
                     SKU <span className="text-slate-500">(auto-generated if blank)</span>
@@ -492,7 +531,7 @@ export function AdminProductForm() {
                   </button>
                 </div>
               ))}
-              <button type="button" className="rounded-lg border border-amber-700/70 px-3 py-2 text-xs font-medium text-amber-100 hover:bg-amber-950/30" onClick={() => setGeneralVariants((current) => [...current, { optionLabel: "", sku: "", stock: "0" }])}>
+              <button type="button" className="rounded-lg border border-amber-700/70 px-3 py-2 text-xs font-medium text-amber-100 hover:bg-amber-950/30" onClick={() => setGeneralVariants((current) => [...current, { optionLabel: "", sku: "", stock: "0", fabricId: "" }])}>
                 + Add another option
               </button>
             </div>
@@ -508,22 +547,27 @@ export function AdminProductForm() {
             </div>
             <div>
               <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Sizes</p>
-              <div className="flex flex-wrap gap-2">
-                {catalog.sizes.map((size) => {
-                  const selected = selectedSizeIds.includes(size.id);
-                  return (
-                    <button
-                      key={size.id}
-                      type="button"
-                      aria-pressed={selected}
-                      className={`min-w-12 rounded-xl border px-3.5 py-2.5 text-xs transition-colors duration-200 ease-out active:transform-none active:filter-none ${selected ? "border-amber-300 bg-amber-700 font-semibold text-white hover:bg-amber-600" : "border-slate-600 text-slate-300 hover:border-amber-600 hover:bg-slate-700/60 hover:text-white"}`}
-                      onClick={() => toggleSelection(selectedSizeIds, size.id, setSelectedSizeIds)}
-                    >
+              <details className="group relative">
+                <summary className={`${fieldClass} flex cursor-pointer list-none items-center justify-between text-slate-300 [&::-webkit-details-marker]:hidden`}>
+                  <span>{selectedSizeIds.length ? `${selectedSizeIds.length} size${selectedSizeIds.length === 1 ? "" : "s"} selected` : "Choose sizes"}</span>
+                  <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-180">⌄</span>
+                </summary>
+                <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-600 bg-[#171c24] p-2 shadow-xl">
+                  {catalog.sizes.length > 0 ? catalog.sizes.map((size) => (
+                    <label key={size.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/60">
+                      <input
+                        type="checkbox"
+                        className="accent-amber-500"
+                        checked={selectedSizeIds.includes(size.id)}
+                        onChange={() => toggleSelection(selectedSizeIds, size.id, setSelectedSizeIds)}
+                      />
                       {size.name}
-                    </button>
-                  );
-                })}
-              </div>
+                    </label>
+                  )) : (
+                    <p className="px-3 py-2 text-xs text-slate-400">No sizes available. Add sizes in Admin → Catalog.</p>
+                  )}
+                </div>
+              </details>
             </div>
             <div>
               <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Colors <span className="font-normal normal-case tracking-normal">(optional)</span></p>
@@ -541,7 +585,7 @@ export function AdminProductForm() {
             <div className="grid gap-2 border-t border-slate-700 pt-4 sm:grid-cols-[1fr_auto]">
               <select className={`${fieldClass} border-slate-600 bg-[#171c24] text-white`} value={bulkFabricId} onChange={(event) => setBulkFabricId(event.target.value)}>
                 <option value="">Choose fabric for variants</option>
-                {catalog.fabrics.map((fabric) => (
+                {fabrics.map((fabric) => (
                   <option key={fabric.id} value={fabric.id}>{fabric.name}</option>
                 ))}
               </select>
@@ -574,7 +618,7 @@ export function AdminProductForm() {
             ) : rows.map((row, index) => {
               const sizeName = catalog.sizes.find((size) => size.id === row.sizeId)?.name || "Choose size";
               const color = colors.find((item) => item.id === row.colorId);
-              const fabricName = catalog.fabrics.find((fabric) => fabric.id === row.fabricId)?.name || "No fabric";
+              const fabricName = fabrics.find((fabric) => fabric.id === row.fabricId)?.name || "No fabric";
               return (
                 <div key={index} className="variant-combination-row rounded-xl border border-slate-700 bg-[#171c24] p-3 sm:p-4">
                   <div className="grid items-center gap-3 sm:grid-cols-[1fr_auto]">

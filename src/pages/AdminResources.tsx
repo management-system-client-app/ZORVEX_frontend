@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
 import { ApiError, api } from "../api";
+import { ensureStandardFabrics, STANDARD_FABRICS } from "../catalogOptions";
 import { RowsSkeleton } from "../components/Skeleton";
 import { money, titleCaseStatus } from "../format";
 import { useAuth, useStore } from "../state";
@@ -231,6 +232,7 @@ export function AdminCatalogExtras() {
   const [composition, setComposition] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [addingStandardFabrics, setAddingStandardFabrics] = useState(false);
 
   function load() {
     setLoading(true);
@@ -244,6 +246,24 @@ export function AdminCatalogExtras() {
   const brandCount = catalog?.brands.length ?? 0;
   const sizeCount = catalog?.sizes.length ?? 0;
   const fabricCount = catalog?.fabrics.length ?? 0;
+  const missingStandardFabrics = STANDARD_FABRICS.filter(
+    (name) => !(catalog?.fabrics ?? []).some((item) => item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase()),
+  );
+
+  async function addStandardFabrics() {
+    if (addingStandardFabrics || missingStandardFabrics.length === 0) return;
+    setAddingStandardFabrics(true);
+    setError("");
+    try {
+      const result = await ensureStandardFabrics();
+      setCatalog((current) => current && { ...current, fabrics: result.fabrics });
+      if (result.error) setError(messageOf(result.error, "Some standard fabrics could not be added"));
+    } catch (reason) {
+      setError(messageOf(reason, "Could not add standard fabrics"));
+    } finally {
+      setAddingStandardFabrics(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -341,6 +361,18 @@ export function AdminCatalogExtras() {
           className="w-full rounded-xl bg-orange-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Add
+        </button>
+        <button
+          type="button"
+          disabled={loading || addingStandardFabrics || missingStandardFabrics.length === 0}
+          onClick={() => void addStandardFabrics()}
+          className="w-full rounded-xl border border-orange-700/60 px-4 py-2.5 text-sm font-semibold text-orange-100 transition-colors hover:bg-orange-950/30 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {addingStandardFabrics
+            ? "Adding fabrics…"
+            : missingStandardFabrics.length > 0
+              ? `Add standard fabrics (${missingStandardFabrics.length})`
+              : "All standard fabrics added"}
         </button>
         {loading ? (
           <RowsSkeleton rows={3} />
@@ -1584,7 +1616,7 @@ export function AdminVariants() {
   const [selectedProduct, setSelectedProduct] = useState<ProductCardData | null>(null);
   const [productLoading, setProductLoading] = useState(false);
   const [productSearchError, setProductSearchError] = useState("");
-  const [sizeId, setSizeId] = useState("");
+  const [selectedSizeIds, setSelectedSizeIds] = useState<string[]>([]);
   const [fabricId, setFabricId] = useState("");
   const [colorId, setColorId] = useState("");
   const [colorQuery, setColorQuery] = useState("");
@@ -1719,76 +1751,93 @@ export function AdminVariants() {
             setError("Search for a product and choose it from the suggestions.");
             return;
           }
-          if (!sku.trim()) {
-            setError("Enter a SKU for this variant.");
-            return;
-          }
           setSaving(true);
           setError("");
           setNote("");
           try {
             const genericDimensions =
-              !sizeId || !fabricId ? await ensureGenericVariantDimensions() : null;
-            const resolvedSizeId = sizeId || genericDimensions?.sizeId;
+              selectedSizeIds.length === 0 || !fabricId ? await ensureGenericVariantDimensions() : null;
             const resolvedFabricId = fabricId || genericDimensions?.fabricId;
+            const targets = selectedSizeIds.length > 0
+              ? selectedSizeIds.map((id) => ({
+                  sizeId: id,
+                  sizeName: catalog?.sizes.find((size) => size.id === id)?.name ?? "Size",
+                }))
+              : [{
+                  sizeId: genericDimensions!.sizeId,
+                  sizeName: catalog?.sizes.find((size) => size.id === genericDimensions!.sizeId)?.name ?? "One Size",
+                }];
             const existingVariants = await api.variants({
               productId,
               limit: 100,
               page: 1,
             });
-            const matchingVariant = existingVariants.find((variant) =>
-              variant.sizeId === (resolvedSizeId ?? null) &&
-              variant.fabricId === (resolvedFabricId ?? null) &&
-              variant.colorId === (colorId || null),
-            );
-            if (matchingVariant) {
-              const quantityToAdd = Number(stock);
-              await api.saveVariant({
-                stock: matchingVariant.stock + quantityToAdd,
-              }, matchingVariant.id);
-              setNote(`This option already existed. Added ${quantityToAdd} units to its stock.`);
-              setSku("");
-              setOptionLabel("");
-              setColorId("");
-              setColorQuery("");
-              setSelectedColor(null);
-              load();
-              return;
+            let addedCount = 0;
+            let updatedCount = 0;
+            const failedSizes: string[] = [];
+            for (const target of targets) {
+              try {
+                const matchingVariant = existingVariants.find((variant) =>
+                  variant.sizeId === target.sizeId &&
+                  variant.fabricId === (resolvedFabricId ?? null) &&
+                  variant.colorId === (colorId || null),
+                );
+                if (matchingVariant) {
+                  await api.saveVariant({
+                    stock: matchingVariant.stock + Number(stock),
+                  }, matchingVariant.id);
+                  updatedCount += 1;
+                  continue;
+                }
+
+                const skuBase = (sku.trim() || selectedProduct?.name || "ITEM")
+                  .toUpperCase()
+                  .replace(/[^A-Z0-9]+/g, "-")
+                  .replace(/^-|-$/g, "")
+                  .slice(0, 24) || "ITEM";
+                const sizeSuffix = target.sizeName
+                  .toUpperCase()
+                  .replace(/[^A-Z0-9]+/g, "-")
+                  .replace(/^-|-$/g, "")
+                  .slice(0, 12) || "SIZE";
+                const generatedSku = `${skuBase}-${sizeSuffix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+                const variantInput = {
+                  productId,
+                  sizeId: target.sizeId,
+                  fabricId: resolvedFabricId,
+                  colorId: colorId || null,
+                  optionLabel: optionLabel.trim() || (selectedSizeIds.length > 0 ? target.sizeName : "Standard"),
+                  sku: generatedSku,
+                  stock: Number(stock),
+                };
+                try {
+                  await api.saveVariant(variantInput);
+                } catch (reason) {
+                  const backendDoesNotSupportOptionLabel =
+                    reason instanceof ApiError &&
+                    reason.status === 422 &&
+                    reason.errors?.some((issue) => issue.message === 'Unrecognized key: "optionLabel"');
+                  if (!backendDoesNotSupportOptionLabel) throw reason;
+                  const { optionLabel: _unsupportedOptionLabel, ...compatibleInput } = variantInput;
+                  await api.saveVariant(compatibleInput);
+                }
+                addedCount += 1;
+              } catch (reason) {
+                failedSizes.push(`${target.sizeName}: ${messageOf(reason, "Could not save variant")}`);
+              }
             }
-            const variantInput = {
-              productId,
-              sizeId: resolvedSizeId,
-              fabricId: resolvedFabricId,
-              colorId: colorId || null,
-              optionLabel: optionLabel.trim() || "Standard",
-              sku: sku.trim(),
-              stock: Number(stock),
-            };
-            try {
-              await api.saveVariant(variantInput);
-            } catch (reason) {
-              const backendDoesNotSupportOptionLabel =
-                reason instanceof ApiError &&
-                reason.status === 422 &&
-                reason.errors?.some((issue) => issue.message === 'Unrecognized key: "optionLabel"');
-              if (!backendDoesNotSupportOptionLabel) throw reason;
-              const { optionLabel: _unsupportedOptionLabel, ...compatibleInput } = variantInput;
-              await api.saveVariant(compatibleInput);
-              setNote("Variant added. This server version does not save option labels; update the backend to enable them.");
-              setSku("");
-              setOptionLabel("");
-              setColorId("");
-              setColorQuery("");
-              setSelectedColor(null);
-              load();
-              return;
-            }
+            setSelectedSizeIds([]);
             setSku("");
             setOptionLabel("");
             setColorId("");
             setColorQuery("");
             setSelectedColor(null);
-            setNote("Variant added successfully.");
+            setNote(
+              `${addedCount} variant${addedCount === 1 ? "" : "s"} added; stock updated for ${updatedCount} existing option${updatedCount === 1 ? "" : "s"}.`,
+            );
+            if (failedSizes.length > 0) {
+              setError(`Could not add: ${failedSizes.join("; ")}`);
+            }
             load();
           } catch (reason) {
             setError(messageOf(reason, "Could not save the variant"));
@@ -1868,13 +1917,32 @@ export function AdminVariants() {
             </ul>
           ) : null}
         </div>
-        <label className="block text-xs font-medium text-slate-300">
-          Size <span className="font-normal text-slate-500">(optional)</span>
-          <select className={`${variantFieldClass} mt-1.5`} value={sizeId} onChange={(event) => setSizeId(event.target.value)}>
-            <option value="">No size</option>
-            {(catalog?.sizes ?? []).map((size) => <option key={size.id} value={size.id}>{size.name}</option>)}
-          </select>
-        </label>
+        <div className="block text-xs font-medium text-slate-300">
+          <span>Sizes <span className="font-normal text-slate-500">(choose multiple for apparel)</span></span>
+          <details className="group relative mt-1.5">
+            <summary className={`${variantFieldClass} flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden`}>
+              <span>{selectedSizeIds.length ? `${selectedSizeIds.length} size${selectedSizeIds.length === 1 ? "" : "s"} selected` : "No size (uses One Size)"}</span>
+              <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-600 bg-[#171c24] p-2 shadow-xl">
+              {(catalog?.sizes ?? []).length > 0 ? (catalog?.sizes ?? []).map((size) => (
+                <label key={size.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/60">
+                  <input
+                    type="checkbox"
+                    className="accent-amber-500"
+                    checked={selectedSizeIds.includes(size.id)}
+                    onChange={() => setSelectedSizeIds((current) =>
+                      current.includes(size.id)
+                        ? current.filter((id) => id !== size.id)
+                        : [...current, size.id],
+                    )}
+                  />
+                  {size.name}
+                </label>
+              )) : <p className="px-3 py-2 text-xs text-slate-400">Add sizes in Admin → Catalog first.</p>}
+            </div>
+          </details>
+        </div>
         <label className="block text-xs font-medium text-slate-300">
           Fabric <span className="font-normal text-slate-500">(optional)</span>
           <select className={`${variantFieldClass} mt-1.5`} value={fabricId} onChange={(event) => setFabricId(event.target.value)}>
@@ -1941,8 +2009,8 @@ export function AdminVariants() {
           ) : null}
         </div>
         <label className="block text-xs font-medium text-slate-300">
-          SKU
-          <input className={`${variantFieldClass} mt-1.5 font-mono placeholder:font-sans placeholder:text-slate-500`} required placeholder="e.g. TEE-BLK-M" value={sku} onChange={(event) => setSku(event.target.value)} />
+          SKU prefix <span className="font-normal text-slate-500">(optional; unique SKU generated per size)</span>
+          <input className={`${variantFieldClass} mt-1.5 font-mono placeholder:font-sans placeholder:text-slate-500`} placeholder="e.g. TEE-BLK" value={sku} onChange={(event) => setSku(event.target.value)} />
         </label>
         <label className="block text-xs font-medium text-slate-300">
           Stock quantity
@@ -1957,8 +2025,8 @@ export function AdminVariants() {
             <span className="rounded-md border border-slate-700 bg-[#202630] px-1.5 py-0.5 text-[10px] text-slate-400">{stock || "0"} units</span>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="max-w-full truncate rounded-md border border-amber-800/50 bg-amber-950/25 px-2 py-1 font-mono text-[10px] text-amber-200">{sku || "SKU pending"}</span>
-            <span className="rounded-md border border-slate-700 bg-[#202630] px-2 py-1 text-[10px] text-slate-300">{optionLabel || catalog?.sizes.find((size) => size.id === sizeId)?.name || "Option"}</span>
+            <span className="max-w-full truncate rounded-md border border-amber-800/50 bg-amber-950/25 px-2 py-1 font-mono text-[10px] text-amber-200">{sku || selectedProduct?.name || "ITEM"}-{selectedSizeIds.length === 1 ? catalog?.sizes.find((size) => size.id === selectedSizeIds[0])?.name.toUpperCase() : selectedSizeIds.length > 1 ? `${selectedSizeIds.length}-SIZES` : "ONE-SIZE"}-XXXX</span>
+            <span className="rounded-md border border-slate-700 bg-[#202630] px-2 py-1 text-[10px] text-slate-300">{optionLabel || selectedSizeIds.map((id) => catalog?.sizes.find((size) => size.id === id)?.name).filter(Boolean).join(", ") || "Standard"}</span>
             {fabricId ? <span className="rounded-md border border-slate-700 bg-[#202630] px-2 py-1 text-[10px] text-slate-300">{catalog?.fabrics.find((fabric) => fabric.id === fabricId)?.name ?? "Fabric"}</span> : null}
             {selectedColor ? <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-[#202630] px-2 py-1 text-[10px] text-slate-300"><span className="h-2 w-2 rounded-full border border-white/20" style={{ backgroundColor: selectedColor.hexCode }} />{selectedColor.name}</span> : null}
           </div>

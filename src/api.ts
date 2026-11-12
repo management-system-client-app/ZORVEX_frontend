@@ -341,7 +341,8 @@ export const api = {
     images: File[],
     imageColorIds: (string | null)[] = [],
   ) => {
-    const preparedImages = await Promise.all(images.map(prepareImageForUpload));
+    const preparedImages: File[] = [];
+    for (const image of images) preparedImages.push(await prepareImageForUpload(image));
     const body = new FormData();
     body.append("data", JSON.stringify(input));
     for (const image of preparedImages) body.append("images", image);
@@ -354,7 +355,8 @@ export const api = {
     images: File[] = [],
     imageColorIds: (string | null)[] = [],
   ) => {
-    const preparedImages = await Promise.all(images.map(prepareImageForUpload));
+    const preparedImages: File[] = [];
+    for (const image of images) preparedImages.push(await prepareImageForUpload(image));
     const body: BodyInit =
       preparedImages.length > 0
         ? (() => {
