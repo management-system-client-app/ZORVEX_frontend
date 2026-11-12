@@ -211,7 +211,12 @@ export function HomePage() {
   const isLoading = loading;
 
   function updateDailyDeals(products: ProductCardData[]) {
-    if (products.length === 0) return;
+    if (products.length === 0) {
+      dailyDealsRef.current = [];
+      setDailyDeals([]);
+      cacheDailyDeals([]);
+      return;
+    }
     const discounted = products.filter((product) => productFlags(product).onSale);
     const nextDeals = discounted.length > 0 ? discounted : dailyDealsRef.current.length === 0 ? products : [];
     if (nextDeals.length === 0) return;
