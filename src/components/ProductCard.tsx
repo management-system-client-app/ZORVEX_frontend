@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { coverImage, money, productFlags } from "../format";
@@ -83,7 +83,7 @@ export function ProductCarousel({
   products,
   showAvailableStock = false,
   dealCards = false,
-  autoSlide = false,
+  autoSlide = true,
 }: {
   products: ProductCardData[];
   showAvailableStock?: boolean;
@@ -91,55 +91,42 @@ export function ProductCarousel({
   autoSlide?: boolean;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
-  const paused = useRef(false);
-  const autoSlideStopped = useRef(false);
+
+  const scrollByCard = useCallback((direction: -1 | 1) => {
+    const row = rowRef.current;
+    if (!row) return;
+
+    const cards = Array.from(row.children).filter((card): card is HTMLElement => card instanceof HTMLElement);
+    if (cards.length < 2) return;
+
+    const rowLeft = row.getBoundingClientRect().left;
+    const positions = cards.map((card) =>
+      card.getBoundingClientRect().left - rowLeft + row.scrollLeft,
+    );
+    const currentIndex = positions.reduce(
+      (current, position, index) => (position <= row.scrollLeft + 2 ? index : current),
+      0,
+    );
+    const targetIndex = currentIndex + direction;
+    const maxScroll = Math.max(row.scrollWidth - row.clientWidth, 0);
+    const targetPosition =
+      targetIndex < 0 ? maxScroll : targetIndex >= cards.length ? 0 : positions[targetIndex];
+
+    row.scrollTo({ left: targetPosition, behavior: "smooth" });
+  }, []);
 
   useEffect(() => {
-    if (!autoSlide || products.length < 2 || autoSlideStopped.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!autoSlide || products.length < 2) return;
 
     const timer = window.setInterval(() => {
-      const row = rowRef.current;
-      if (!row || paused.current || document.visibilityState !== "visible") return;
-
-      const cards = Array.from(row.children).filter((card): card is HTMLElement => card instanceof HTMLElement);
-      if (cards.length < 2) return;
-
-      const positions = cards.map((card) =>
-        card.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft,
-      );
-      const currentIndex = cards.reduce(
-        (current, _card, index) => (positions[index] <= row.scrollLeft + 2 ? index : current),
-        0,
-      );
-      const nextIndex = currentIndex + 1;
-      if (nextIndex >= cards.length) {
-        autoSlideStopped.current = true;
-        window.clearInterval(timer);
-        return;
-      }
-
-      const maxScroll = Math.max(row.scrollWidth - row.clientWidth, 0);
-      const nextPosition = Math.min(positions[nextIndex], maxScroll);
-      row.scrollTo({ left: nextPosition, behavior: "smooth" });
-      if (nextIndex === cards.length - 1 || nextPosition >= maxScroll - 1) {
-        autoSlideStopped.current = true;
-        window.clearInterval(timer);
-      }
+      scrollByCard(1);
     }, 4500);
 
     return () => window.clearInterval(timer);
-  }, [autoSlide, products.length]);
+  }, [autoSlide, products.length, scrollByCard]);
 
   return (
-    <div
-      className="product-carousel"
-      onMouseEnter={() => { paused.current = true; }}
-      onMouseLeave={() => { paused.current = false; }}
-      onFocusCapture={() => { paused.current = true; }}
-      onBlurCapture={(event) => {
-        if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) paused.current = false;
-      }}
-    >
+    <div className="product-carousel">
       <div className="product-row" ref={rowRef}>
         {products.map((product) => (
           <ProductCard
@@ -157,7 +144,7 @@ export function ProductCarousel({
             type="button"
             className="carousel-arrow prev"
             aria-label="Show previous products"
-            onClick={() => rowRef.current?.scrollBy({ left: -rowRef.current.clientWidth, behavior: "smooth" })}
+            onClick={() => scrollByCard(-1)}
           >
             ‹
           </button>
@@ -165,7 +152,7 @@ export function ProductCarousel({
             type="button"
             className="carousel-arrow next"
             aria-label="Show more products"
-            onClick={() => rowRef.current?.scrollBy({ left: rowRef.current.clientWidth, behavior: "smooth" })}
+            onClick={() => scrollByCard(1)}
           >
             ›
           </button>

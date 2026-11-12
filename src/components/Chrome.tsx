@@ -213,6 +213,11 @@ export function Header() {
     }
     const term = query.trim();
     if (!term) {
+      if (window.matchMedia("(max-width: 899px)").matches) {
+        setSearchError("");
+        searchInputRef.current?.focus();
+        return;
+      }
       setSearchError("Enter a search term");
       setSuggestionsOpen(false);
       searchInputRef.current?.focus();
@@ -273,11 +278,12 @@ export function Header() {
             </Link>
           </div>
           <form onSubmit={onSearch} className={`header-search${searchOpen ? " is-open" : ""}`}>
-            <button type="button" className="mobile-search-back" onClick={() => setSearchOpen(false)}><ArrowLeft size={17} />Back</button>
+            <button type="button" className="mobile-search-back" onClick={() => { setSearchOpen(false); setSearchError(""); }}><ArrowLeft size={17} />Back</button>
             <input
               ref={searchInputRef}
               id="header-search-input"
               value={query}
+              enterKeyHint="search"
               onChange={(event) => { setQuery(event.target.value); setSearchError(""); setSuggestionsOpen(true); }}
               onKeyDown={onSearchKeyDown}
               placeholder="I'm shopping for ..."
@@ -331,7 +337,10 @@ export function Header() {
               className="icon-btn mobile-search-toggle"
               aria-label={searchOpen ? "Close search" : "Open search"}
               aria-expanded={searchOpen}
-              onClick={() => setSearchOpen((open) => !open)}
+              onClick={() => {
+                setSearchError("");
+                setSearchOpen((open) => !open);
+              }}
             >
               <Search size={20} strokeWidth={1.7} />
             </button>

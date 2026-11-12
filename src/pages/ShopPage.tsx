@@ -89,7 +89,7 @@ export function ShopPage() {
 
   useEffect(() => {
     let active = true;
-    let loadingInitial = true;
+    let loadingInitial = items.length === 0;
     let refreshing = false;
     let refreshQueued = false;
 
@@ -166,7 +166,7 @@ export function ShopPage() {
     if (!value) next.delete(key);
     else next.set(key, value);
     if (key !== "page") next.delete("page");
-    setParams(next);
+    setParams(next, { preventScrollReset: true });
   }
 
   function applyPrice(event: FormEvent) {
@@ -177,7 +177,7 @@ export function ShopPage() {
     if (maxPrice) next.set("maxPrice", maxPrice);
     else next.delete("maxPrice");
     next.delete("page");
-    setParams(next);
+    setParams(next, { preventScrollReset: true });
     setSheet(false);
   }
 
@@ -232,7 +232,7 @@ export function ShopPage() {
             <span className="shop-result-count">{meta ? <><strong>{meta.total}</strong> {meta.total === 1 ? "product" : "products"} found</> : "Loading products"}</span>
             <select
               className="sort"
-              aria-label="Sort"
+              aria-label="Sort products"
               value={params.get("sort") ?? "latest"}
               onChange={(event) => setParam("sort", event.target.value)}
             >

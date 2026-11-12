@@ -1,8 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Clock3, MessageCircle, PackageCheck, Ruler, Store } from "lucide-react";
-import { ApiError, api, DATA_REFRESH_INTERVAL } from "../api";
-import { ProductCarousel } from "../components/ProductCard";
+import { ApiError, api, DATA_REFRESH_INTERVAL, hydrateImages } from "../api";
+import { ProductGrid } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
 import { coverImage, money, productFlags } from "../format";
 import { readRecentlyViewedIds, readRecentlyViewedProducts, recordRecentlyViewed } from "../recentlyViewed";
@@ -175,6 +175,8 @@ export function ProductPage() {
     const cachedProducts = readProductCache();
     const cachedProduct = cachedProducts[id] ?? null;
     setProduct(cachedProduct);
+    setRelated([]);
+    setRelatedLoading(true);
     setError("");
     setRecentIndex(0);
     recordRecentlyViewed(id, cachedProduct ?? undefined);
@@ -203,7 +205,83 @@ export function ProductPage() {
       setFabricId(first && hasProductFabric(first) ? first.fabric?.id ?? null : null);
       setSelectedVariantId(first?.id ?? null);
       setImage(0);
-      api.related(id).then((items) => active && setRelated(items)).catch(() => undefined).finally(() => active && setRelatedLoading(false));
+      const loadRelated = async () => {
+        const recommendations = new Map<string, ProductCardData>();
+        try {
+          for (const item of await api.related(id)) {
+            if (item.id !== next.id) recommendations.set(item.id, item);
+          }
+        } catch (reason) {
+          console.warn("Related products could not be loaded", reason);
+        }
+
+        if (recommendations.size < 4) {
+          try {
+            const sameCategory = await api.products({
+              status: "ACTIVE",
+              categoryId: next.category.id,
+              limit: 20,
+              page: 1,
+              sort: "latest",
+            }, true);
+            for (const item of sameCategory.items) {
+              if (item.id !== next.id) recommendations.set(item.id, item);
+            }
+          } catch (reason) {
+            console.warn("Products in the same category could not be loaded", reason);
+          }
+        }
+
+        if (recommendations.size < 4) {
+          try {
+            const latest = await api.products({
+              status: "ACTIVE",
+              limit: 20,
+              page: 1,
+              sort: "latest",
+            }, true);
+            for (const item of latest.items) {
+              if (item.id !== next.id) recommendations.set(item.id, item);
+            }
+          } catch (reason) {
+            console.warn("Latest products could not be loaded for recommendations", reason);
+          }
+        }
+
+        if (recommendations.size < 4) {
+          try {
+            const home = await api.home(true);
+            const homeProducts = [
+              ...home.trendingProducts,
+              ...home.newArrivals.flatMap((block) => block.products ?? []),
+              ...home.campaigns.flatMap((block) => block.products ?? []),
+              ...(home.gadgetBanners ?? []).flatMap((block) => block.products ?? []),
+            ];
+            for (const item of homeProducts) {
+              if (item.id !== next.id) recommendations.set(item.id, item);
+            }
+          } catch (reason) {
+            console.warn("Home products could not be loaded for recommendations", reason);
+          }
+        }
+
+        if (recommendations.size < 4) {
+          try {
+            for (const item of await api.bestSellers(true)) {
+              if (item.id !== next.id) recommendations.set(item.id, item);
+            }
+          } catch (reason) {
+            console.warn("Best-selling products could not be loaded for recommendations", reason);
+          }
+        }
+
+        const products = await hydrateImages([...recommendations.values()].slice(0, 8));
+        if (active) {
+          setRelated(products);
+          setRelatedLoading(false);
+        }
+      };
+      void loadRelated();
       api.reviews(id).then((result) => {
         if (!active) return;
         setReviews(result.items);
@@ -902,7 +980,7 @@ export function ProductPage() {
             </div>
             <Link to={`/shop?categoryId=${product.category.id}`}>See more <ArrowRight size={16} /></Link>
           </div>
-          <ProductCarousel products={related} />
+          <ProductGrid products={related} />
         </section>
       ) : null}
 
