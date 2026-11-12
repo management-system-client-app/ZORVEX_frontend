@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://e-commerce-chi-seven-16.vercel.app/api/:path*"
+      "destination": "https://zorvex-backend.vercel.app/api/:path*"
     },
     {
       "source": "/api/v1/:path*",
-      "destination": "https://e-commerce-chi-seven-16.vercel.app/api/v1/:path*"
+      "destination": "https://zorvex-backend.vercel.app/api/v1/:path*"
     },
     {
       "source": "/(.*)",

@@ -142,8 +142,8 @@ export function LoginPage() {
     <StandaloneAuthLayout activeTab="login">
       <form className="login-form" onSubmit={onSubmit}>
           <label className="login-field">
-            <span>E-mail / Phone Number <b>*</b></span>
-            <input type="text" autoComplete="username" placeholder="Enter Your E-mail address / Phone number" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <span>E-mail <b>*</b></span>
+            <input type="email" autoComplete="email" placeholder="Enter your e-mail address" required value={email} onChange={(event) => setEmail(event.target.value)} />
           </label>
           <label className="login-field">
             <span>Password <b>*</b></span>
