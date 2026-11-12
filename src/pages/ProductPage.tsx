@@ -1,12 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, Clock3, Heart, MessageCircle, PackageCheck, Ruler } from "lucide-react";
+import { ArrowRight, Clock3, Heart, MessageCircle, PackageCheck, Ruler, Store } from "lucide-react";
 import { ApiError, api, DATA_REFRESH_INTERVAL } from "../api";
 import { ProductCarousel } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
 import { coverImage, money, productFlags } from "../format";
 import { readRecentlyViewedIds, readRecentlyViewedProducts, recordRecentlyViewed } from "../recentlyViewed";
-import { useAuth, useCart } from "../state";
+import { useAuth, useCart, useStore } from "../state";
 import { isStaffReferralId, readStaffReferralId, saveStaffReferralId } from "../staffReferral";
 import type { ProductCardData, ProductDetail, Review, SizeGuide, StaffReferral, Variant } from "../types";
 
@@ -99,6 +99,7 @@ export function ProductPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { add, busy, setDrawer } = useCart();
+  const { settings } = useStore();
   const [product, setProduct] = useState<ProductDetail | null>(() => readProductCache()[id] ?? null);
   const [related, setRelated] = useState<ProductCardData[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -364,6 +365,11 @@ export function ProductPage() {
   const flags = productFlags(product);
   const unit = selected?.price != null ? Number(selected.price) : flags.price;
   const available = selected ? Math.max(selected.stock - (selected.reserved ?? 0), 0) : 0;
+  const supportPhone = settings.supportPhone || "+88-01885-998899";
+  const productChatUrl = staffWhatsAppUrl(
+    supportPhone,
+    `Hello, I am interested in ${product.name}: ${window.location.origin}${location.pathname}${location.search}`,
+  );
   const photo = gallery[image] ?? gallery[0];
 
   function chooseSize(nextSizeId: string) {
@@ -460,7 +466,7 @@ export function ProductPage() {
   }
 
   return (
-    <div>
+    <div className="product-page-shell">
       <p className="crumb">
         <Link to="/">Home</Link> / <Link to={`/shop?categoryId=${product.category.id}`}>{product.category.name}</Link> /{" "}
         {product.name}
@@ -908,6 +914,33 @@ export function ProductPage() {
           <ProductCarousel products={related} />
         </section>
       ) : null}
+
+      <nav className="mobile-product-bar" aria-label="Product purchase actions">
+        <Link to="/" className="mobile-product-bar-link">
+          <Store size={19} strokeWidth={1.8} />
+          <span>Store</span>
+        </Link>
+        <a className="mobile-product-bar-link" href={productChatUrl} target="_blank" rel="noopener noreferrer">
+          <MessageCircle size={19} strokeWidth={1.8} />
+          <span>Chat</span>
+        </a>
+        <button
+          type="button"
+          className="mobile-product-buy"
+          disabled={busy || available < 1}
+          onClick={onBuyNow}
+        >
+          Buy Now
+        </button>
+        <button
+          type="button"
+          className="mobile-product-add"
+          disabled={busy || available < 1}
+          onClick={onAdd}
+        >
+          Add to Cart
+        </button>
+      </nav>
 
       {guideOpen ? (
         <div className="modal size-guide-modal" role="dialog" aria-label="Size guide">

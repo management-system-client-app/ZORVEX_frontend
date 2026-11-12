@@ -10515,3 +10515,140 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
     bottom: calc(94px + env(safe-area-inset-bottom));
   }
 }
+
+.mobile-product-bar { display: none; }
+
+@media (max-width: 899px) {
+  .store-shell:has(.mobile-product-bar) .bottom-nav,
+  .store-shell:has(.mobile-product-bar) .support-chat { display: none; }
+  .store-shell:has(.mobile-product-bar) .page {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+  .store-shell:has(.mobile-product-bar) .footer {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+  }
+  .store-shell .mobile-product-bar {
+    position: fixed;
+    z-index: 45;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: 48px 48px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0;
+    border-top: 1px solid #3c4447;
+    padding: 5px 5px calc(5px + env(safe-area-inset-bottom));
+    background: #171d20;
+    box-shadow: 0 -5px 18px rgb(0 0 0 / 24%);
+  }
+  .store-shell .mobile-product-bar-link {
+    display: grid;
+    min-width: 0;
+    min-height: 48px;
+    align-content: center;
+    justify-items: center;
+    gap: 3px;
+    color: #c3ccce;
+    font-size: 9px;
+    line-height: 1;
+    text-decoration: none;
+  }
+  .store-shell .mobile-product-bar-link svg { color: #f0ad55; }
+  .store-shell .mobile-product-buy,
+  .store-shell .mobile-product-add {
+    min-width: 0;
+    min-height: 48px;
+    border: 0;
+    padding: 0 5px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+  .store-shell .mobile-product-buy {
+    border-radius: 6px 0 0 6px;
+    background: #167da0;
+  }
+  .store-shell .mobile-product-add {
+    border-radius: 0 6px 6px 0;
+    background: #d36508;
+  }
+  .store-shell .mobile-product-buy:disabled,
+  .store-shell .mobile-product-add:disabled { opacity: .55; }
+}
+
+@media (max-width: 599px) {
+  .store-shell .product-page-shell > .crumb { display: none; }
+  .store-shell .product-detail-page { gap: 14px; }
+  .store-shell .product-detail-main { gap: 12px; }
+  .store-shell .product-detail-page .gallery-main {
+    aspect-ratio: 1;
+    border: 0;
+    border-radius: 0;
+    background: #f4f4f2;
+  }
+  .store-shell .product-detail-page .gallery-main:hover img { transform: none; }
+  .store-shell .product-detail-page .thumbs {
+    gap: 7px;
+    margin: 8px 0 0;
+    padding: 0 10px 2px;
+  }
+  .store-shell .product-detail-page .thumbs button {
+    width: 48px;
+    height: 48px;
+    border-radius: 5px;
+  }
+  .store-shell .product-summary {
+    border: 0;
+    border-top: 1px solid #343d41;
+    border-radius: 0;
+    padding: 16px 14px 18px;
+    background: #202729;
+    box-shadow: none;
+  }
+  .store-shell .product-summary h1 {
+    color: #f1f3f3;
+    font-size: 19px;
+    font-weight: 650;
+    line-height: 1.4;
+  }
+  .store-shell .product-brand-line { margin-bottom: 5px; font-size: 11px; }
+  .store-shell .product-brand-line strong { font-size: 12px; }
+  .store-shell .product-rating {
+    gap: 5px;
+    margin-top: 7px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+  .store-shell .product-rating > span { font-size: 14px; }
+  .store-shell .product-rating small { font-size: 10px; }
+  .store-shell .product-detail-page .product-price {
+    gap: 8px;
+    margin: 12px -14px 10px;
+    border: 0;
+    border-radius: 0;
+    padding: 10px 14px;
+    background: #4a078b;
+  }
+  .store-shell .product-price strong { color: #fff; font-size: 22px; }
+  .store-shell .product-price s { color: #d9c6e8; font-size: 12px; }
+  .store-shell .product-summary .option-label {
+    margin: 12px 0 7px;
+    border-left: 2px solid #e6a544;
+    padding: 3px 7px;
+    background: #2b3032;
+    color: #e2e7e8;
+    font-size: 10px;
+    letter-spacing: .04em;
+  }
+  .store-shell .product-summary .size-btn { min-height: 34px; border-radius: 5px; font-size: 12px; }
+  .store-shell .product-summary .swatch { width: 46px; height: 46px; }
+  .store-shell .product-summary .stock { margin-block: 9px 5px; font-size: 11px; }
+  .store-shell .product-purchase-row { justify-content: space-between; margin-top: 12px; }
+  .store-shell .product-purchase-row .option-label { margin: 0; }
+  .store-shell .product-summary .qty { min-height: 34px; }
+  .store-shell .product-summary .qty button,
+  .store-shell .product-summary .qty span { height: 32px; }
+  .store-shell .product-actions { display: none; }
+}
