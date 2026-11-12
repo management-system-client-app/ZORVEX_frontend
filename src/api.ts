@@ -180,13 +180,18 @@ async function performRequest<T>(path: string, init: RequestInit): Promise<Envel
   if (!response.ok || !body || body.success === false) {
     if (response.status === 401) sessionStore.setToken(null);
     const responseMessage = body?.message?.trim();
-    const message = !responseMessage
-      ? response.ok
+    let message: string;
+    if (response.status === 413) {
+      message = "Upload is too large for the deployed server. Please choose fewer or smaller images.";
+    } else if (!responseMessage) {
+      message = response.ok
         ? "The server returned an invalid response"
-        : `Request failed (HTTP ${response.status})`
-      : /^request failed\.?$/i.test(responseMessage)
+        : `Request failed (HTTP ${response.status})`;
+    } else {
+      message = /^request failed\.?$/i.test(responseMessage)
         ? `${responseMessage} (HTTP ${response.status})`
         : responseMessage;
+    }
     throw new ApiError(message, response.status, body?.errors);
   }
   return body;

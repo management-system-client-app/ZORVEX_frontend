@@ -1,5 +1,5 @@
 const MAX_IMAGE_EDGE = 1600;
-const MAX_UPLOAD_IMAGE_BYTES = 550 * 1024;
+const MAX_UPLOAD_IMAGE_BYTES = 350 * 1024;
 
 export async function prepareImageForUpload(file: File): Promise<File> {
   const isAvif = file.type.toLowerCase() === "image/avif" || /\.avif$/i.test(file.name);
