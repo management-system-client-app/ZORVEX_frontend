@@ -3,7 +3,7 @@ import { Link, NavLink, Navigate, Outlet as RouterOutlet, useNavigate, useParams
 import { ArrowLeft, ArrowRight, BadgeCheck, Bell, Clock3, Eye, EyeOff, Heart, ImagePlus, LayoutDashboard, LogOut, MapPin, PackageCheck, PackageOpen, ShieldCheck, ShoppingBag, Star, Ticket, Trash2, Truck, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ApiError, api, DATA_REFRESH_INTERVAL } from "../api";
-import { UserFace } from "../components/Chrome";
+import { BrandLogo, UserFace } from "../components/Chrome";
 import { ProductGrid } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
 import { money, titleCaseStatus } from "../format";
@@ -64,9 +64,8 @@ function StandaloneAuthLayout({ activeTab, children }: { activeTab: "login" | "r
         <Link className="login-back" to="/">
           <ArrowLeft size={14} strokeWidth={1.8} /> Back To Home
         </Link>
-        <div className="login-brand-row" aria-label="Shopnex">
-          <strong className="login-brand-resell">Shop<span>nex</span></strong>
-          <span className="login-brand-tagline">SMART SHOPPING · BETTER VALUE</span>
+        <div className="login-brand-row" aria-label="Bazergrid">
+          <BrandLogo compact />
         </div>
         <section className="login-card">
           <nav className="login-tabs" aria-label="Account access">

@@ -89,6 +89,17 @@ function CategoryList({
   );
 }
 
+export function BrandLogo({ compact = false }: { compact?: boolean }) {
+  return (
+    <span className={`brand-logo${compact ? " is-compact" : ""}`}>
+      <span className="brand-logo-copy">
+        <span className="brand-logo-wordmark">Bazer<span className="brand-logo-accent">grid</span></span>
+        <span className="brand-logo-tag">SMART DEALS · BETTER LIVING</span>
+      </span>
+    </span>
+  );
+}
+
 export function Header() {
   const { catalog } = useStore();
   const { user, ready, logout } = useAuth();
@@ -272,9 +283,8 @@ export function Header() {
         <div className="header-container">
         <div className="topbar">
           <div className="header-brands">
-            <Link to="/" className="logo sara-logo" aria-label="Shopnex home">
-              <span className="sara-logo-main">Shop<span className="resell-logo-accent">nex</span></span>
-              <span className="sara-logo-sub">SMART SHOPPING · BETTER VALUE</span>
+            <Link to="/" className="logo brand-logo-link" aria-label="Bazergrid home">
+              <BrandLogo />
             </Link>
           </div>
           <form onSubmit={onSearch} className={`header-search${searchOpen ? " is-open" : ""}`}>

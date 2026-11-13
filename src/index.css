@@ -328,6 +328,42 @@ h1, h2, h3, p { margin: 0; }
   color: #fff;
   white-space: nowrap;
 }
+.brand-logo-link { display: inline-flex; align-items: center; }
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  line-height: 1;
+}
+.brand-logo-copy {
+  display: grid;
+  gap: 4px;
+  align-items: center;
+}
+.brand-logo-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  color: #f8fafc;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.07em;
+}
+.brand-logo-accent { color: #ffad3d; }
+.brand-logo-tag {
+  color: #9bb0c5;
+  font-size: 7px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.brand-logo.is-compact .brand-logo-wordmark {
+  font-size: 24px;
+}
+.brand-logo.is-compact .brand-logo-tag {
+  font-size: 6px;
+  letter-spacing: 0.16em;
+}
 .sara-logo { display: grid; gap: 0; flex: none; line-height: 0.9; color: #2672b8; }
 .sara-logo-main { font-size: 25px; font-weight: 800; }
 .sara-logo-sub { margin-top: 3px; color: #58738d; font-size: 7px; font-weight: 700; letter-spacing: 0.12em; }
@@ -8976,6 +9012,10 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   justify-items: center;
   gap: 6px;
   color: #123553;
+}
+.login-brand-row .brand-logo {
+  justify-content: center;
+  text-align: center;
 }
 .login-brand-resell {
   color: #123553;

@@ -412,7 +412,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (settingsResult.status === "fulfilled") {
           setSettings(settingsResult.value);
           writeStoreCache(SETTINGS_CACHE_KEY, settingsResult.value);
-          document.title = settingsResult.value.storeName;
         } else {
           console.warn("Store settings could not be refreshed", settingsResult.reason);
         }

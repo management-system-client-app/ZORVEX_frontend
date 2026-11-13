@@ -145,6 +145,22 @@ function StaffReferralCapture() {
   return null;
 }
 
+function RouteDocumentTitle() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const route = pathname === "/" ? "Home" : pathname
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => decodeURIComponent(segment).replace(/[-_]/g, " "))
+      .map((segment) => segment.replace(/\b\w/g, (letter) => letter.toUpperCase()))
+      .join(" / ");
+    document.title = `${route} | Bazergrid`;
+  }, [pathname]);
+
+  return null;
+}
+
 function ReloadIndicator() {
   const [visible, setVisible] = useState(
     () => performance.getEntriesByType("navigation").some(
@@ -171,6 +187,7 @@ export function App() {
     <>
       <RouteScrollReset />
       <StaffReferralCapture />
+      <RouteDocumentTitle />
       <ReloadIndicator />
       <ToastViewport />
       <Routes>
