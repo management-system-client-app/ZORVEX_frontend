@@ -1637,6 +1637,9 @@ export function AdminVariants() {
   const [editingVariant, setEditingVariant] = useState<VariantRow | null>(null);
   const [editedStock, setEditedStock] = useState("");
   const [savingStock, setSavingStock] = useState(false);
+  const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const inventorySectionRef = useRef<HTMLElement>(null);
 
   async function load() {
     setLoading(true);
@@ -1763,8 +1766,22 @@ export function AdminVariants() {
 
   const activeVariantCount = items.filter((item) => item.isActive).length;
   const lowStockCount = items.filter((item) => item.isActive && item.stock <= 5).length;
+  const visibleVariants = lowStockOnly
+    ? items.filter((item) => item.isActive && item.stock <= 5)
+    : items;
+  const variantsPerPage = 10;
+  const pageCount = Math.max(1, Math.ceil(visibleVariants.length / variantsPerPage));
+  const currentInventoryPage = Math.min(inventoryPage, pageCount);
+  const firstVariantIndex = (currentInventoryPage - 1) * variantsPerPage;
+  const paginatedVariants = visibleVariants.slice(firstVariantIndex, firstVariantIndex + variantsPerPage);
   const totalUnits = items.reduce((total, item) => total + item.stock, 0);
   const variantFieldClass = "h-11 w-full rounded-xl border-2 border-slate-600 bg-[#171c24] px-4 text-sm text-white outline-none focus:border-amber-400";
+
+  function showLowStock() {
+    setLowStockOnly(true);
+    setInventoryPage(1);
+    inventorySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <Panel title="Variants" error={error}>
@@ -1788,10 +1805,16 @@ export function AdminVariants() {
             <dt className="inline-flex items-center gap-1 text-[10px] text-emerald-300/80"><svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="8" cy="8" r="6" /><path d="m5.5 8 1.7 1.7 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Active</dt>
             <dd className="mt-0.5 text-sm font-semibold text-emerald-200">{loading ? "—" : activeVariantCount}</dd>
           </div>
-          <div className="min-w-24 rounded-lg border border-rose-800/60 bg-rose-950/25 px-3 py-2">
-            <dt className="inline-flex items-center gap-1 text-[10px] text-rose-300/80"><svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M8 2 1.8 13h12.4L8 2zM8 6v3m0 2v.01" strokeLinecap="round" strokeLinejoin="round" /></svg>Low stock</dt>
-            <dd className="mt-0.5 text-sm font-semibold text-rose-200">{loading ? "—" : lowStockCount}</dd>
-          </div>
+          <button
+            type="button"
+            className={`min-w-24 rounded-lg border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 ${lowStockOnly ? "border-rose-500 bg-rose-950/50" : "border-rose-800/60 bg-rose-950/25 hover:border-rose-600 hover:bg-rose-950/40"}`}
+            aria-label={`Show ${lowStockCount} low-stock variants`}
+            aria-pressed={lowStockOnly}
+            onClick={showLowStock}
+          >
+            <span className="inline-flex items-center gap-1 text-[10px] text-rose-300/80"><svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M8 2 1.8 13h12.4L8 2zM8 6v3m0 2v.01" strokeLinecap="round" strokeLinejoin="round" /></svg>Low stock</span>
+            <span className="mt-0.5 block text-sm font-semibold text-rose-200">{loading ? "—" : lowStockCount}</span>
+          </button>
           <div className="min-w-24 rounded-lg border border-slate-700 bg-[#171c24] px-3 py-2">
             <dt className="inline-flex items-center gap-1 text-[10px] text-slate-400"><svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="m2 5 6-3 6 3v7l-6 3-6-3zM2 5l6 3 6-3M8 8v7" /></svg>Total units</dt>
             <dd className="mt-0.5 text-sm font-semibold text-slate-100">{loading ? "—" : totalUnits}</dd>
@@ -2090,7 +2113,7 @@ export function AdminVariants() {
           {saving ? "Adding variant…" : "Add variant"}
         </button>
       </form>
-      <section className="overflow-hidden rounded-2xl border border-slate-700 border-t-2 border-t-amber-600 bg-[#202630] shadow-sm">
+      <section ref={inventorySectionRef} className="scroll-mt-4 overflow-hidden rounded-2xl border border-slate-700 border-t-2 border-t-amber-600 bg-[#202630] shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 px-5 py-4">
           <div className="flex items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-xl border border-amber-800/50 bg-amber-950/25 text-amber-200"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m2 6 6-3 6 3 6-3 2 1v14l-8 4-6-3-6 3V6zm6-3v14m6-11v15m6-21v14" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
@@ -2099,14 +2122,19 @@ export function AdminVariants() {
             <p className="mt-0.5 text-xs text-slate-400">Manage product options and stock status</p>
             </div>
           </div>
-          <span className="rounded-lg border border-slate-600 bg-[#171c24] px-2.5 py-1 text-xs font-medium text-slate-300">{items.length} variants</span>
+          <span className="text-xs text-slate-400">{visibleVariants.length} {lowStockOnly ? "low-stock" : "total"} variants</span>
         </div>
         {note ? <p role="status" className="mx-5 mt-4 rounded-xl border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">{note}</p> : null}
-        {loading ? <div className="p-5"><RowsSkeleton rows={5} columns={5} /></div> : items.length === 0 ? (
+        {loading ? <div className="p-5"><RowsSkeleton rows={5} columns={5} /></div> : visibleVariants.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <span className="mx-auto grid h-11 w-11 place-items-center rounded-xl border border-slate-700 bg-[#171c24] text-slate-400">0</span>
-            <p className="mt-3 text-sm font-medium text-slate-200">No variants yet</p>
-            <p className="mt-1 text-xs text-slate-400">Create a variant using the form to start tracking options and stock.</p>
+            <p className="mt-3 text-sm font-medium text-slate-200">{lowStockOnly ? "No low-stock variants" : "No variants yet"}</p>
+            <p className="mt-1 text-xs text-slate-400">{lowStockOnly ? "All active variants have more than 5 units in stock." : "Create a variant using the form to start tracking options and stock."}</p>
+            {lowStockOnly ? (
+              <button type="button" className="mt-4 rounded-lg border border-slate-600 bg-[#171c24] px-3 py-2 text-xs font-medium text-slate-200 hover:border-slate-400" onClick={() => setLowStockOnly(false)}>
+                Show all variants
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -2121,7 +2149,7 @@ export function AdminVariants() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => {
+                {paginatedVariants.map((item) => {
                   const sizeName = item.sizeId ? catalog?.sizes.find((size) => size.id === item.sizeId)?.name ?? item.sizeId : null;
                   const fabricName = item.fabricId ? catalog?.fabrics.find((fabric) => fabric.id === item.fabricId)?.name ?? item.fabricId : null;
                   return (
@@ -2229,6 +2257,36 @@ export function AdminVariants() {
             </table>
           </div>
         )}
+        {!loading && visibleVariants.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-700 px-5 py-3">
+            <p className="text-xs text-slate-400">
+              Showing {firstVariantIndex + 1}–{Math.min(firstVariantIndex + variantsPerPage, visibleVariants.length)} of {visibleVariants.length}
+            </p>
+            {pageCount > 1 ? (
+              <nav className="flex items-center gap-2" aria-label="Variant inventory pagination">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-600 bg-[#171c24] px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={currentInventoryPage === 1}
+                  onClick={() => setInventoryPage(currentInventoryPage - 1)}
+                >
+                  Previous
+                </button>
+                <span className="min-w-16 text-center text-xs text-slate-300" aria-live="polite">
+                  Page {currentInventoryPage} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-600 bg-[#171c24] px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={currentInventoryPage === pageCount}
+                  onClick={() => setInventoryPage(currentInventoryPage + 1)}
+                >
+                  Next
+                </button>
+              </nav>
+            ) : null}
+          </div>
+        ) : null}
       </section>
       {editingVariant ? (
         <div className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4" onMouseDown={(event) => {
