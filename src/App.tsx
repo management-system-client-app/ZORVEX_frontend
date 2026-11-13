@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { MessageCircle, Phone, X } from "lucide-react";
 import { Footer, Header } from "./components/Chrome";
-import { AccountCoupons, AccountDashboard, AccountLayout, AccountNotifications, AccountOrders, AccountProfile, AccountReturns, AccountReviews, AuthCallbackPage, ChangePasswordPage, CmsPageView, DeliveryAddressPage, ForgotPage, LoginPage, OutletsPage, RegisterPage, ResetPage, TrackPage, WishlistPage } from "./pages/AccountPages";
+import { AccountDashboard, AccountLayout, AccountNotifications, AccountOrders, AccountProfile, AccountReturns, AccountReviews, AuthCallbackPage, ChangePasswordPage, CmsPageView, DeliveryAddressPage, ForgotPage, LoginPage, OutletsPage, RegisterPage, ResetPage, TrackPage, WishlistPage } from "./pages/AccountPages";
 import { AdminLayout, AdminOrderDetail, AdminOrders, AdminOverview, AdminProducts } from "./pages/AdminDashboard";
 import { AdminBanners, AdminCategories } from "./pages/AdminCatalog";
 import {
@@ -84,8 +84,19 @@ function SupportChat() {
 }
 
 function StoreShell() {
+  const [theme, setTheme] = useState<"dark" | "light">(() =>
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const updateTheme = (event: MediaQueryListEvent) => setTheme(event.matches ? "dark" : "light");
+    mediaQuery.addEventListener("change", updateTheme);
+    return () => mediaQuery.removeEventListener("change", updateTheme);
+  }, []);
+
   return (
-    <div className="store-shell theme-light">
+    <div className={`store-shell theme-light${theme === "dark" ? " theme-dark" : ""}`}>
       <Header />
       <main className="page">
         <div className="page-container">
@@ -238,7 +249,7 @@ export function App() {
           <Route path="orders" element={<AccountOrders />} />
           <Route path="returns" element={<AccountReturns />} />
           <Route path="wishlist" element={<WishlistPage />} />
-          <Route path="coupons" element={<AccountCoupons />} />
+          <Route path="coupons" element={<Navigate to="/account" replace />} />
           <Route path="reviews" element={<AccountReviews />} />
           <Route path="notifications" element={<AccountNotifications />} />
         </Route>

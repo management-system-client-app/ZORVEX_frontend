@@ -200,7 +200,7 @@ async function performRequest<T>(path: string, init: RequestInit): Promise<Envel
 function request<T>(
   path: string,
   init: RequestInit = {},
-  options: { fresh?: boolean } = {},
+  options: { fresh?: boolean; suppressMutationToasts?: boolean; suppressErrorToast?: boolean } = {},
 ): Promise<Envelope<T>> {
   const method = (init.method ?? "GET").toUpperCase();
   const cacheable = method === "GET" && shouldCacheGet(path);
@@ -226,7 +226,7 @@ function request<T>(
       const variantMutation = /^\/variants(?:\/[^/?]+)?\/?$/i.test(path);
       if (variantMutation) clearProductAndVariantCache();
       else clearApiCache();
-      dispatchToast("success", mutationSuccessMessage(path, method));
+      if (!options.suppressMutationToasts) dispatchToast("success", mutationSuccessMessage(path, method));
       if (/^\/products(?:\/[^/?]+)?\/?$/i.test(path)) {
         window.dispatchEvent(new Event("app:products-changed"));
       } else if (variantMutation) {
@@ -243,7 +243,7 @@ function request<T>(
   }).catch((reason: unknown) => {
     const expectedAdminLoginFallback =
       path === "/auth/login" && reason instanceof ApiError && reason.status === 401;
-    if (method !== "GET" && !expectedAdminLoginFallback) {
+    if (method !== "GET" && !expectedAdminLoginFallback && !options.suppressMutationToasts && !options.suppressErrorToast) {
       if (!(reason instanceof ApiError && reason.status === 403)) {
         dispatchToast(
           "error",
@@ -349,6 +349,12 @@ export const api = {
     request<ProductCardData[]>(`/products/${id}/related`).then((res) => res.data),
   product: (id: string, fresh = false) =>
     request<ProductDetail>(`/products/${id}`, {}, { fresh }).then((res) => res.data),
+  deleteProductImage: (productId: string, imageId: string) =>
+    request<unknown>(
+      `/products/${productId}/images/${imageId}`,
+      { method: "DELETE" },
+      { suppressErrorToast: true },
+    ).then((res) => res.data),
   createProduct: async (
     input: Record<string, unknown>,
     images: File[],
@@ -356,11 +362,50 @@ export const api = {
   ) => {
     const preparedImages: File[] = [];
     for (const image of images) preparedImages.push(await prepareImageForUpload(image));
-    const body = new FormData();
-    body.append("data", JSON.stringify(input));
-    for (const image of preparedImages) body.append("images", image);
-    if (preparedImages.length > 0) body.append("imageColorIds", JSON.stringify(imageColorIds));
-    return request<ProductDetail>("/products", { method: "POST", body }).then((res) => res.data);
+    const submit = (productInput: Record<string, unknown>) => {
+      const body = new FormData();
+      body.append("data", JSON.stringify(productInput));
+      for (const image of preparedImages) body.append("images", image);
+      if (preparedImages.length > 0) body.append("imageColorIds", JSON.stringify(imageColorIds));
+      return request<ProductDetail>("/products", { method: "POST", body }, { suppressMutationToasts: true });
+    };
+
+    try {
+      const product = (await submit(input)).data;
+      dispatchToast("success", "Added successfully");
+      return product;
+    } catch (reason) {
+      const rejectsFabricId = reason instanceof ApiError && reason.status === 422 &&
+        (reason.message.includes('Unrecognized key: "fabricId"') ||
+          reason.errors?.some((issue) => issue.message === 'Unrecognized key: "fabricId"'));
+      if (!rejectsFabricId) {
+        if (!(reason instanceof ApiError && reason.status === 403)) {
+          dispatchToast("error", reason instanceof Error ? reason.message : "The action could not be completed");
+        }
+        throw reason;
+      }
+
+      const compatibleInput = { ...input };
+      for (const key of ["sizes", "variants"]) {
+        const rows = compatibleInput[key];
+        if (!Array.isArray(rows)) continue;
+        compatibleInput[key] = rows.map((row) => {
+          if (typeof row !== "object" || row === null || Array.isArray(row)) return row;
+          return Object.fromEntries(Object.entries(row).filter(([field]) => field !== "fabricId"));
+        });
+      }
+
+      try {
+        const product = (await submit(compatibleInput)).data;
+        dispatchToast("success", "Product added. This server does not support fabrics; fabric selections were not saved.");
+        return product;
+      } catch (retryReason) {
+        if (!(retryReason instanceof ApiError && retryReason.status === 403)) {
+          dispatchToast("error", retryReason instanceof Error ? retryReason.message : "The action could not be completed");
+        }
+        throw retryReason;
+      }
+    }
   },
   updateProduct: async (
     id: string,

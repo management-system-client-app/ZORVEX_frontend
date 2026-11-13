@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../api";
 import { ensureStandardFabrics } from "../catalogOptions";
 import { DetailSkeleton } from "../components/Skeleton";
+import { slugifyProductName } from "../format";
 import { useAuth, useStore } from "../state";
 import type { Color, Fabric, ProductImage } from "../types";
 
@@ -94,7 +95,9 @@ export function AdminProductForm() {
   const { user } = useAuth();
   const { catalog } = useStore();
   const canManageStaffCommission = user?.adminRole === "SUPER_ADMIN";
+  const canDeleteProductImages = user?.adminRole === "SUPER_ADMIN";
   const [name, setName] = useState("");
+  const productSlug = slugifyProductName(name);
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("ACTIVE");
   const [gender, setGender] = useState("UNISEX");
@@ -119,6 +122,7 @@ export function AdminProductForm() {
   const [imagePreviews, setImagePreviews] = useState<Record<string, string>>({});
   const previewUrls = useRef<string[]>([]);
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
+  const [removingImageId, setRemovingImageId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(!editing);
@@ -203,6 +207,30 @@ export function AdminProductForm() {
       if (!editing) {
         setSelectedColorIds((current) => current.includes(colorId) ? current : [...current, colorId]);
       }
+    }
+  }
+
+  async function removeExistingImage(photo: ProductImage) {
+    if (!id || !photo.id) {
+      setError("This image cannot be removed because its image ID is missing.");
+      return;
+    }
+
+    setError("");
+    setRemovingImageId(photo.id);
+    try {
+      await api.deleteProductImage(id, photo.id);
+      setExistingImages((current) => current.filter((image) => image.id !== photo.id));
+    } catch (reason) {
+      const message =
+        reason instanceof ApiError &&
+        reason.status === 404 &&
+        reason.message.startsWith("Route not found: DELETE ")
+          ? "The connected backend returns 404 for image deletion. Confirm the latest ZORVEX_BACKEND production deployment is assigned to zorvex-backend.vercel.app; saved images cannot be deleted until this route is live."
+          : messageOf(reason, "Could not remove the product image");
+      setError(message);
+    } finally {
+      setRemovingImageId(null);
     }
   }
 
@@ -293,6 +321,7 @@ export function AdminProductForm() {
       if (editing && id) {
         await api.updateProduct(id, {
           name: name.trim(),
+          slug: productSlug,
           description: description.trim(),
           status,
           gender,
@@ -333,6 +362,7 @@ export function AdminProductForm() {
       await api.createProduct(
         {
           name: name.trim(),
+          slug: productSlug,
           description: description.trim(),
           status,
           gender,
@@ -396,6 +426,9 @@ export function AdminProductForm() {
         <label className="grid gap-1.5 text-sm sm:col-span-2">
           <span className="text-slate-500">Name</span>
           <input className={fieldClass} required minLength={2} value={name} onChange={(event) => setName(event.target.value)} />
+          <span className="text-xs text-slate-500" aria-live="polite">
+            Product URL slug: <span className="font-mono text-emerald-300">{productSlug || "Enter a product name"}</span>
+          </span>
         </label>
         <label className="grid gap-1.5 text-sm sm:col-span-2">
           <span className="text-slate-500">Description</span>
@@ -718,8 +751,26 @@ export function AdminProductForm() {
         {existingImages.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {existingImages.map((photo) => (
-              <div key={photo.id ?? photo.url} className="overflow-hidden rounded-xl border border-slate-600 bg-[#171c24]">
+              <div key={photo.id ?? photo.url} className="relative overflow-hidden rounded-xl border border-slate-600 bg-[#171c24]">
                 <img src={photo.url} alt={photo.alt ?? name} className="aspect-square w-full object-cover" />
+                {canDeleteProductImages ? (
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 grid h-8 w-8 place-items-center rounded-lg border border-rose-400/40 bg-rose-950/90 text-rose-100 shadow transition-colors hover:bg-rose-800 disabled:cursor-wait disabled:opacity-60"
+                    aria-label={`Delete ${photo.alt || name} image`}
+                    title={photo.id ? "Delete image" : "Cannot delete: image ID is missing"}
+                    disabled={!photo.id || removingImageId !== null}
+                    onClick={() => void removeExistingImage(photo)}
+                  >
+                    {removingImageId === photo.id ? (
+                      <span className="text-xs" aria-hidden="true">…</span>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                        <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                ) : null}
                 <span className="block truncate px-2.5 py-2 text-xs text-slate-300">
                   {photo.colorId ? colors.find((color) => color.id === photo.colorId)?.name ?? "Color image" : "All colors"}
                 </span>

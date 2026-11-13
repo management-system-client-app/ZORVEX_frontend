@@ -4,7 +4,8 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const apiTarget = (env.VITE_API_URL || "https://zorvex-backend.vercel.app")
+  const defaultApiTarget = "https://zorvex-backend.vercel.app";
+  const apiTarget = (env.VITE_API_URL || defaultApiTarget)
     .trim()
     .replace(/\/+$/, "")
     .replace(/\/api\/v1$/i, "")

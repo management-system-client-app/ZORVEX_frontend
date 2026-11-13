@@ -4439,7 +4439,7 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 .store-shell .customer-shortcut strong { overflow: hidden; color: #344755; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .store-shell .customer-shortcut small { overflow: hidden; color: #8a98a2; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .store-shell .customer-shortcut:hover { border-color: #b9d1e3; background: #f8fbfc; }
-.store-shell .customer-feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.store-shell .customer-feature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .store-shell .customer-feature-tile {
   position: relative;
   display: grid;
@@ -4564,7 +4564,7 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 @media (max-width: 1199px) {
   .store-shell .customer-account-shell { grid-template-columns: 230px minmax(0, 1fr); }
   .store-shell .customer-dashboard-top { grid-template-columns: 1fr; }
-  .store-shell .customer-feature-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .store-shell .customer-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 899px) {
@@ -9318,6 +9318,16 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   background: #fff;
   box-shadow: 0 3px 11px rgb(17 48 73 / 4%);
 }
+.store-shell.theme-light .customer-account-shell .customer-dashboard .customer-orders-overview,
+.store-shell.theme-light .customer-account-shell .customer-dashboard .customer-recent-list,
+.store-shell.theme-light .customer-account-shell .customer-dashboard .customer-feature-tile,
+.store-shell.theme-light .customer-account-shell .customer-dashboard .customer-shortcut {
+  background: transparent;
+  box-shadow: none;
+}
+.store-shell.theme-light .customer-account-shell .customer-dashboard .customer-feature-count {
+  background: transparent;
+}
 .store-shell.theme-light .customer-account-shell .account-primary-action {
   border-radius: 5px;
   background: #e9911b;
@@ -9337,6 +9347,141 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 }
 .store-shell.theme-light .tracking-heading {
   border-color: #e1e7eb;
+}
+.store-shell.theme-dark:has(.customer-account-shell) .page { background: #191d23; }
+.store-shell.theme-dark .customer-account-side {
+  border-color: #343c46;
+  background: #171d24;
+  box-shadow: none;
+}
+.store-shell.theme-dark .customer-account-side .account-who { border-bottom-color: #343c46; }
+.store-shell.theme-dark .customer-account-side .user-face { border-color: #46515e; background: #2b323b; }
+.store-shell.theme-dark .account-who-copy strong,
+.store-shell.theme-dark .account-page-heading h1,
+.store-shell.theme-dark .account-surface-heading h2,
+.store-shell.theme-dark .customer-section-heading h2,
+.store-shell.theme-dark .customer-account-shell .account-profile-details dd,
+.store-shell.theme-dark .customer-account-shell .account-password-intro strong,
+.store-shell.theme-dark .customer-account-shell .account-address-intro strong,
+.store-shell.theme-dark .customer-account-shell .account-security-card h2 {
+  color: #e8edf2;
+}
+.store-shell.theme-dark .account-who-copy p,
+.store-shell.theme-dark .customer-account-shell .account-profile-details dt,
+.store-shell.theme-dark .customer-account-shell .account-form-note,
+.store-shell.theme-dark .customer-account-shell .account-password-intro small,
+.store-shell.theme-dark .customer-account-shell .account-address-intro small,
+.store-shell.theme-dark .customer-account-shell .account-security-card p {
+  color: #aab3be;
+}
+.store-shell.theme-dark .account-side-nav a { color: #b6c0cb; }
+.store-shell.theme-dark .account-side-nav a svg { color: #98a4af; }
+.store-shell.theme-dark .account-side-nav a:hover,
+.store-shell.theme-dark .account-side-nav a:focus-visible { background: #283442; color: #a7d4ff; }
+.store-shell.theme-dark .customer-account-shell .account-side-nav a.on {
+  border-left-color: #79b8f0;
+  background: #283442;
+  color: #a7d4ff;
+}
+.store-shell.theme-dark .customer-account-shell .account-surface,
+.store-shell.theme-dark .customer-account-shell .customer-orders-overview,
+.store-shell.theme-dark .customer-account-shell .customer-recent-list,
+.store-shell.theme-dark .customer-account-shell .customer-feature-tile,
+.store-shell.theme-dark .customer-account-shell .customer-shortcut,
+.store-shell.theme-dark .customer-account-shell .wishlist-intro {
+  border-color: #343c46;
+  background: #20262e;
+  color: #e3e8ed;
+  box-shadow: none;
+}
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-orders-overview,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-recent-list,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-feature-tile,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-shortcut {
+  background: transparent;
+}
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-feature-count { background: transparent; }
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-feature-art,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-status-icon,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-shortcut-icon {
+  background: #2b323b;
+}
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-feature-tile.wishlist .customer-feature-art {
+  color: #54c6ba;
+}
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-feature-tile.coupons .customer-feature-art {
+  color: #e7839a;
+}
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-status-icon.violet { color: #b19af5; }
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-status-icon.teal,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-shortcut-icon.teal { color: #54c6ba; }
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-status-icon.blue,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-shortcut-icon.blue { color: #8abdf0; }
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-status-icon.green { color: #78cc98; }
+.store-shell.theme-dark .customer-account-shell .customer-dashboard .customer-status-tile:hover { background: #252b33; }
+.store-shell.theme-dark .customer-account-shell .customer-recent-row,
+.store-shell.theme-dark .customer-account-shell .account-surface-heading,
+.store-shell.theme-dark .customer-account-shell .account-address-intro,
+.store-shell.theme-dark .customer-account-shell .account-address-footer,
+.store-shell.theme-dark .customer-account-shell .account-form-footer {
+  border-color: #343c46;
+}
+.store-shell.theme-dark .customer-account-shell .customer-shortcut strong,
+.store-shell.theme-dark .customer-account-shell .customer-recent-order strong,
+.store-shell.theme-dark .customer-account-shell .customer-recent-total,
+.store-shell.theme-dark .customer-account-shell .account-order-card > header > div > strong,
+.store-shell.theme-dark .customer-account-shell .account-order-item strong,
+.store-shell.theme-dark .customer-account-shell .account-order-card > footer strong,
+.store-shell.theme-dark .customer-account-shell .account-coupon-card > div > strong {
+  color: #e3e8ed;
+}
+.store-shell.theme-dark .customer-account-shell .customer-shortcut small,
+.store-shell.theme-dark .customer-account-shell .customer-recent-order small,
+.store-shell.theme-dark .customer-account-shell .customer-order-status,
+.store-shell.theme-dark .customer-account-shell .account-order-date,
+.store-shell.theme-dark .customer-account-shell .account-order-item,
+.store-shell.theme-dark .customer-account-shell .account-order-item small,
+.store-shell.theme-dark .customer-account-shell .account-order-card > footer,
+.store-shell.theme-dark .customer-account-shell .account-return-form > .account-surface-heading > span {
+  color: #aab3be;
+}
+.store-shell.theme-dark .customer-account-shell .account-tabs { border-color: #343c46; }
+.store-shell.theme-dark .customer-account-shell .account-tabs button { color: #aab3be; }
+.store-shell.theme-dark .customer-account-shell .account-tabs button.on { color: #a7d4ff; }
+.store-shell.theme-dark .customer-account-shell .account-password-intro { border-left-color: #79b8f0; background: #283442; }
+.store-shell.theme-dark .customer-account-shell .account-password-intro > span:first-child,
+.store-shell.theme-dark .customer-account-shell .account-security-icon,
+.store-shell.theme-dark .customer-account-shell .account-address-intro > span,
+.store-shell.theme-dark .customer-account-shell .customer-empty-state > span,
+.store-shell.theme-dark .customer-account-shell .customer-recent-icon {
+  background: #283442;
+  color: #a7d4ff;
+}
+.store-shell.theme-dark .customer-account-shell .account-password-fields .field span,
+.store-shell.theme-dark .customer-account-shell .account-return-form .field span,
+.store-shell.theme-dark .customer-account-shell .account-address-form .field span {
+  color: #d3dae2;
+}
+.store-shell.theme-dark .customer-account-shell .account-default-badge { border-color: #46515e; color: #aab3be; }
+.store-shell.theme-dark .customer-account-shell .account-order-status { background: #283442; color: #a7d4ff; }
+.store-shell.theme-dark .customer-account-shell .account-coupon-card code { border-color: #46515e; color: #a7d4ff; }
+.store-shell.theme-dark .customer-account-shell .wishlist-empty { background: #20262e; }
+.store-shell.theme-dark .customer-account-shell .account-page-heading,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard-welcome {
+  border-color: #394b5b;
+  background: linear-gradient(110deg, #1d2b37, #20262e 78%);
+  box-shadow: none;
+}
+.store-shell.theme-dark .customer-account-shell .account-page-kicker,
+.store-shell.theme-dark .customer-account-shell .customer-eyebrow { color: #a7d4ff; }
+.store-shell.theme-dark .customer-account-shell .account-page-heading h1,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard-welcome h1,
+.store-shell.theme-dark .customer-account-shell .customer-dashboard-welcome h1 strong { color: #e8edf2; }
+.store-shell.theme-dark .customer-account-shell .customer-dashboard-mark,
+.store-shell.theme-dark .customer-account-shell .account-page-heading-icon {
+  border-color: #46596a;
+  background: #283442;
+  box-shadow: none;
 }
 .store-shell.theme-light .tracking-kicker { color: #a45e04; }
 .store-shell.theme-light .tracking-title { color: #173a56; }
@@ -10145,6 +10290,71 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   gap: 5px;
   padding: 13px 5px 5px;
 }
+.store-shell.theme-dark .topbar { background: #141820; }
+.store-shell.theme-dark .category-nav {
+  border-color: #2c333d;
+  background: #171d24;
+}
+.store-shell.theme-dark .category-nav .top-nav > a,
+.store-shell.theme-dark .category-nav-tools a { color: #d5dbe3; }
+.store-shell.theme-dark .category-nav .top-nav > a:hover,
+.store-shell.theme-dark .category-nav .top-nav > a:focus-visible,
+.store-shell.theme-dark .category-nav-tools a:hover,
+.store-shell.theme-dark .category-nav-tools a:focus-visible { color: #a7d4ff; }
+.store-shell.theme-dark .login-standalone {
+  background: #191d23;
+  color: #e8edf2;
+}
+.store-shell.theme-dark .login-back { color: #c4ccd5; }
+.store-shell.theme-dark .login-brand-resell,
+.store-shell.theme-dark .login-brand-sara,
+.store-shell.theme-dark .login-brand-marketplace { color: #a7d4ff; }
+.store-shell.theme-dark .login-brand-tagline { color: #aab3be; }
+.store-shell.theme-dark .login-card {
+  border-color: #343c46;
+  background: #20262e;
+  color: #e8edf2;
+  box-shadow: 0 12px 34px rgb(0 0 0 / 24%);
+}
+.store-shell.theme-dark .login-tab {
+  border-color: #46515e;
+  color: #c4ccd5;
+}
+.store-shell.theme-dark .login-tab-active {
+  border-color: #2871b8;
+  background: #2871b8;
+  color: #fff;
+}
+.store-shell.theme-dark .login-field > span:first-child,
+.store-shell.theme-dark .login-flow-title { color: #e8edf2; }
+.store-shell.theme-dark .login-field input {
+  border-color: #46515e;
+  background: #12161c;
+  color: #f0f2f5;
+}
+.store-shell.theme-dark .login-field input:focus {
+  border-color: #79b8f0;
+  box-shadow: 0 0 0 3px rgb(121 184 240 / 14%);
+}
+.store-shell.theme-dark .login-password-toggle,
+.store-shell.theme-dark .login-note a { color: #a7d4ff; }
+.store-shell.theme-dark .login-note,
+.store-shell.theme-dark .login-forgot-row a { color: #c4ccd5; }
+.store-shell.theme-dark .login-error { color: #ff8a9a; }
+.store-shell.theme-dark .register-avatar-preview {
+  border-color: #46515e;
+  background: #283442;
+}
+.store-shell.theme-dark .register-photo-picker { color: #a7d4ff; }
+.store-shell.theme-dark .login-submit { background: #e9911b; color: #17212a; }
+.store-shell.theme-dark .bottom-nav {
+  border-color: #343c46;
+  background: #171d24;
+  color: #c4ccd5;
+}
+.store-shell.theme-dark .bottom-nav a,
+.store-shell.theme-dark .bottom-nav button { color: #aab3be; }
+.store-shell.theme-dark .bottom-nav .on { color: #a7d4ff; }
 .store-shell.theme-light .home .home-product-section .shop-card-category,
 .store-shell.theme-light .home .home-deal-section .deal-card.shop-product-card .shop-card-category {
   border-radius: 5px;
@@ -12708,4 +12918,282 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   .store-shell:has(.checkout-unique) .checkout-unique .pay-card:not(.panel)::after {
     right: 10px;
   }
+}
+
+.login-standalone {
+  min-height: 100vh;
+  align-items: center;
+  padding: clamp(24px, 6vh, 64px) 24px;
+  background:
+    radial-gradient(ellipse at 10% 12%, rgb(233 145 27 / 12%), transparent 30%),
+    radial-gradient(ellipse at 95% 90%, rgb(40 100 168 / 9%), transparent 32%),
+    #f2f5f7;
+  color: #23384a;
+}
+.login-content {
+  display: grid;
+  width: min(1020px, 100%);
+  grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+  min-height: 600px;
+  overflow: hidden;
+  border: 1px solid #dfe7ed;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(22 46 65 / 14%);
+}
+.login-promo {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: clamp(30px, 5vw, 56px);
+  background:
+    radial-gradient(ellipse at 75% 17%, rgb(68 135 183 / 36%), transparent 38%),
+    linear-gradient(145deg, #123553, #174b6d 58%, #1b5973);
+  color: #fff;
+}
+.login-promo::before,
+.login-promo::after {
+  position: absolute;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+.login-promo::before { width: 360px; height: 360px; right: -170px; bottom: 60px; }
+.login-promo::after { width: 250px; height: 250px; right: -115px; bottom: 115px; }
+.login-promo-brand,
+.login-promo-copy,
+.login-promo-note { position: relative; z-index: 1; }
+.login-promo-brand .brand-logo { justify-content: flex-start; }
+.login-promo-brand .brand-logo-wordmark { color: #fff; font-size: 30px; }
+.login-promo-brand .brand-logo-accent { color: #ffb84e; }
+.login-promo-brand .brand-logo-tag { color: #c1d5e2; }
+.login-promo-copy { margin-block: auto; padding-block: 54px; }
+.login-promo-kicker {
+  display: inline-flex;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgb(255 255 255 / 8%);
+  color: #ffd08a;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.login-promo-copy h2 {
+  max-width: 390px;
+  margin-top: 20px;
+  color: #fff;
+  font-size: clamp(32px, 4vw, 46px);
+  font-weight: 750;
+  letter-spacing: -.045em;
+  line-height: 1.08;
+}
+.login-promo-copy p {
+  max-width: 340px;
+  margin-top: 14px;
+  color: #c5d5df;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.login-promo-note {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-top: 1px solid rgb(255 255 255 / 16%);
+  padding-top: 18px;
+}
+.login-promo-note > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 9%);
+  color: #ffd08a;
+}
+.login-promo-note > div { display: grid; gap: 3px; }
+.login-promo-note strong { color: #f5f8fa; font-size: 11px; }
+.login-promo-note small { color: #b7cbd7; font-size: 10px; }
+.login-auth {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(28px, 5vw, 58px);
+}
+.login-auth .login-back {
+  align-self: flex-start;
+  margin: 0 0 36px;
+  color: #657887;
+  font-size: 12px;
+  font-weight: 600;
+}
+.login-auth .login-back:hover { color: #1d5f97; }
+.login-auth-heading { margin-bottom: 24px; }
+.login-auth-heading > span {
+  color: #a45e04;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.login-auth-heading h1 {
+  margin-top: 7px;
+  color: #193b55;
+  font-size: clamp(25px, 3vw, 32px);
+  font-weight: 750;
+  letter-spacing: -.035em;
+  line-height: 1.15;
+}
+.login-auth-heading p { margin-top: 8px; color: #738391; font-size: 12px; }
+.login-auth .login-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.login-auth .login-tabs { gap: 10px; }
+.login-auth .login-tab {
+  height: 44px;
+  border: 1px solid #dce5eb;
+  border-radius: 8px;
+  color: #637482;
+  font-size: 13px;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.login-auth .login-tab:hover { border-color: #9eb8ca; background: #f5f8fa; }
+.login-auth .login-tab-active {
+  border-color: #173f60;
+  background: #173f60;
+  color: #fff;
+  box-shadow: 0 5px 12px rgb(23 63 96 / 16%);
+}
+.login-auth .login-divider { margin: 18px 0 22px; border-color: #e7edf1; }
+.login-auth .login-form { display: grid; gap: 9px; }
+.login-auth .login-field { gap: 7px; margin: 0; }
+.login-auth .login-field > span:first-child { color: #344957; font-size: 11px; font-weight: 650; }
+.login-auth .login-field input {
+  height: 46px;
+  border-color: #d7e0e6;
+  border-radius: 8px;
+  padding-inline: 12px;
+  background: #f9fbfc;
+  color: #253847;
+  font-size: 12px;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+.login-auth .login-field input::placeholder { color: #9aa8b2; }
+.login-auth .login-field input:focus {
+  border-color: #d9912d;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgb(233 145 27 / 13%);
+}
+.login-auth .login-password-control input { padding-right: 42px; }
+.login-auth .login-password-toggle { right: 9px; color: #6d8494; }
+.login-auth .login-password-toggle:hover { color: #a45e04; }
+.login-auth .login-forgot-row { margin: 0 0 7px; }
+.login-auth .login-forgot-row a { color: #a45e04; font-size: 11px; }
+.login-auth .login-submit {
+  height: 46px;
+  margin-top: 2px;
+  border-radius: 8px;
+  background: linear-gradient(100deg, #e9911b, #f3aa3c);
+  color: #17334d;
+  font-size: 12px;
+  font-weight: 750;
+  box-shadow: 0 6px 14px rgb(217 132 16 / 19%);
+  transition: filter 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+.login-auth .login-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow: 0 9px 18px rgb(217 132 16 / 25%);
+}
+.login-auth .login-flow-title { margin: 0 0 3px; color: #193b55; font-size: 19px; }
+.login-auth .login-note { color: #738391; }
+.login-auth .login-note a { color: #a45e04; }
+.login-auth .register-photo-picker {
+  border-color: #d1dfe8;
+  border-radius: 8px;
+  background: #f6f9fb;
+}
+.login-auth .register-photo-picker > span { color: #657887; }
+.login-auth .register-avatar-preview { box-shadow: 0 0 0 4px #f4f7f9; }
+
+@media (max-width: 760px) {
+  .login-standalone { padding: 20px 14px; }
+  .login-content { width: min(520px, 100%); grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .login-promo { min-height: 235px; padding: 25px 28px; }
+  .login-promo-brand .brand-logo-wordmark { font-size: 25px; }
+  .login-promo-copy { padding-block: 25px 18px; }
+  .login-promo-copy h2 { margin-top: 12px; font-size: 30px; }
+  .login-promo-copy p { margin-top: 8px; font-size: 11px; }
+  .login-promo-note { display: none; }
+  .login-auth { padding: 26px 28px 30px; }
+  .login-auth .login-back { margin-bottom: 24px; }
+  .login-auth-heading { margin-bottom: 18px; }
+}
+@media (max-width: 420px) {
+  .login-standalone { padding: 0; }
+  .login-content { min-height: 100vh; border: 0; border-radius: 0; }
+  .login-promo { min-height: 212px; padding: 22px 20px; }
+  .login-promo-copy { padding-block: 20px 12px; }
+  .login-promo-copy h2 { font-size: 27px; }
+  .login-auth { padding: 22px 20px 30px; }
+}
+@media (prefers-color-scheme: dark) {
+  .login-standalone {
+    background:
+      radial-gradient(ellipse at 10% 12%, rgb(233 145 27 / 9%), transparent 30%),
+      radial-gradient(ellipse at 95% 90%, rgb(40 100 168 / 10%), transparent 32%),
+      #191d23;
+    color: #e8edf2;
+  }
+  .login-content {
+    border-color: #343c46;
+    background: #20262e;
+    box-shadow: 0 24px 70px rgb(0 0 0 / 30%);
+  }
+  .login-promo {
+    background:
+      radial-gradient(ellipse at 75% 17%, rgb(68 135 183 / 25%), transparent 38%),
+      linear-gradient(145deg, #102b40, #143b55 58%, #16465c);
+  }
+  .login-auth { background: #20262e; }
+  .login-auth .login-back { color: #aab8c3; }
+  .login-auth .login-back:hover,
+  .login-auth .login-password-toggle:hover { color: #ffc16b; }
+  .login-auth-heading > span,
+  .login-auth .login-forgot-row a,
+  .login-auth .login-note a { color: #ffc16b; }
+  .login-auth-heading h1,
+  .login-auth .login-flow-title { color: #edf2f6; }
+  .login-auth-heading p,
+  .login-auth .login-note { color: #aab8c3; }
+  .login-auth .login-tab { border-color: #46515e; color: #c4ccd5; }
+  .login-auth .login-tab:hover { border-color: #607789; background: #283442; }
+  .login-auth .login-tab-active { border-color: #286da5; background: #286da5; color: #fff; }
+  .login-auth .login-divider { border-color: #39434e; }
+  .login-auth .login-field > span:first-child { color: #d7e0e7; }
+  .login-auth .login-field input {
+    border-color: #46515e;
+    background: #171d24;
+    color: #eef2f5;
+  }
+  .login-auth .login-field input::placeholder { color: #8493a0; }
+  .login-auth .login-field input:focus {
+    border-color: #e5a545;
+    background: #171d24;
+    box-shadow: 0 0 0 3px rgb(233 145 27 / 13%);
+  }
+  .login-auth .login-password-toggle { color: #aab8c3; }
+  .login-auth .register-photo-picker { border-color: #46596a; background: #283442; }
+  .login-auth .register-photo-picker > span { color: #c4ccd5; }
+  .login-auth .register-avatar-preview { border-color: #46596a; background: #283442; box-shadow: 0 0 0 4px #252d36; }
 }

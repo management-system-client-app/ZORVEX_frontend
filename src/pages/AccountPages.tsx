@@ -1,6 +1,6 @@
 import { FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, Navigate, Outlet as RouterOutlet, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BadgeCheck, Bell, Clock3, Eye, EyeOff, Heart, ImagePlus, LayoutDashboard, LogOut, MapPin, PackageCheck, PackageOpen, ShieldCheck, ShoppingBag, Star, Ticket, Truck, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, Bell, Clock3, Eye, EyeOff, Heart, ImagePlus, LayoutDashboard, LogOut, MapPin, PackageCheck, PackageOpen, ShieldCheck, ShoppingBag, Star, Truck, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ApiError, api, DATA_REFRESH_INTERVAL } from "../api";
 import { AddressLocationFields } from "../components/AddressLocationFields";
@@ -9,7 +9,7 @@ import { ProductGrid } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
 import { money, titleCaseStatus } from "../format";
 import { useAuth } from "../state";
-import type { CmsPage, Coupon, Outlet, ProductCardData, TrackedOrder } from "../types";
+import type { CmsPage, Outlet, ProductCardData, TrackedOrder } from "../types";
 
 const OAUTH_TOKEN_KEY = "oauth_token";
 
@@ -58,23 +58,51 @@ export function AuthCallbackPage() {
   );
 }
 
-function StandaloneAuthLayout({ activeTab, children }: { activeTab: "login" | "register"; children: ReactNode }) {
+function StandaloneAuthLayout({
+  activeTab,
+  title,
+  description,
+  children,
+}: {
+  activeTab: "login" | "register";
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
   return (
     <main className="login-standalone">
       <div className="login-content">
-        <Link className="login-back" to="/">
-          <ArrowLeft size={14} strokeWidth={1.8} /> Back To Home
-        </Link>
-        <div className="login-brand-row" aria-label="Bazergrid">
-          <BrandLogo compact />
-        </div>
-        <section className="login-card">
-          <nav className="login-tabs" aria-label="Account access">
-            <Link to="/login" className={`login-tab${activeTab === "login" ? " login-tab-active" : ""}`} aria-current={activeTab === "login" ? "page" : undefined}>Login</Link>
-            <Link to="/register" className={`login-tab${activeTab === "register" ? " login-tab-active" : ""}`} aria-current={activeTab === "register" ? "page" : undefined}>Register</Link>
-          </nav>
-          <div className="login-divider" />
-          {children}
+        <aside className="login-promo">
+          <div className="login-promo-brand"><BrandLogo compact /></div>
+          <div className="login-promo-copy">
+            <span className="login-promo-kicker">YOUR EVERYDAY MARKETPLACE</span>
+            <h2>Good choices.<br />Great everyday finds.</h2>
+            <p>Discover the things you love and keep every order close at hand.</p>
+          </div>
+          <div className="login-promo-note">
+            <span><ShoppingBag size={18} /></span>
+            <div><strong>Shopping made simple</strong><small>One account for all your favorites.</small></div>
+          </div>
+          <span className="login-promo-orbit login-promo-orbit-one" aria-hidden="true" />
+          <span className="login-promo-orbit login-promo-orbit-two" aria-hidden="true" />
+        </aside>
+        <section className="login-auth">
+          <Link className="login-back" to="/">
+            <ArrowLeft size={14} strokeWidth={1.8} /> Back to shop
+          </Link>
+          <div className="login-auth-heading">
+            <span>ACCOUNT ACCESS</span>
+            <h1>{title}</h1>
+            <p>{description}</p>
+          </div>
+          <div className="login-card">
+            <nav className="login-tabs" aria-label="Account access">
+              <Link to="/login" className={`login-tab${activeTab === "login" ? " login-tab-active" : ""}`} aria-current={activeTab === "login" ? "page" : undefined}>Login</Link>
+              <Link to="/register" className={`login-tab${activeTab === "register" ? " login-tab-active" : ""}`} aria-current={activeTab === "register" ? "page" : undefined}>Register</Link>
+            </nav>
+            <div className="login-divider" />
+            {children}
+          </div>
         </section>
       </div>
     </main>
@@ -139,7 +167,11 @@ export function LoginPage() {
   if (user) return <Navigate to={user.accountType === "ADMIN" ? "/admin" : "/"} replace />;
 
   return (
-    <StandaloneAuthLayout activeTab="login">
+    <StandaloneAuthLayout
+      activeTab="login"
+      title="Welcome back"
+      description="Sign in to continue to your account."
+    >
       <form className="login-form" onSubmit={onSubmit}>
           <label className="login-field">
             <span>E-mail <b>*</b></span>
@@ -221,7 +253,11 @@ export function ForgotPage() {
   }
 
   return (
-    <StandaloneAuthLayout activeTab="login">
+    <StandaloneAuthLayout
+      activeTab="login"
+      title="Recover your account"
+      description="We'll help you get back into your account securely."
+    >
       <form className="login-form" onSubmit={step === "email" ? sendCode : step === "code" ? confirmCode : changePassword}>
         <h1 className="login-flow-title">Forgot Password</h1>
         <label className="login-field">
@@ -276,7 +312,11 @@ export function ResetPage() {
   }
 
   return (
-    <StandaloneAuthLayout activeTab="login">
+    <StandaloneAuthLayout
+      activeTab="login"
+      title="Set a new password"
+      description="Choose a new password to secure your account."
+    >
       <form className="login-form" onSubmit={onSubmit}>
         <h1 className="login-flow-title">Reset Password</h1>
         <label className="login-field"><span>E-mail <b>*</b></span><input type="email" placeholder="Enter Your E-mail address" required value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
@@ -328,7 +368,11 @@ export function RegisterPage() {
   if (user) return <Navigate to="/" replace />;
 
   return (
-    <StandaloneAuthLayout activeTab="register">
+    <StandaloneAuthLayout
+      activeTab="register"
+      title="Join Bazergrid"
+      description="Create an account to save favorites and follow your orders."
+    >
       <form className="login-form register-form" onSubmit={onSubmit}>
         <div className="register-photo-row">
           <div className="register-avatar-preview">
@@ -690,7 +734,6 @@ export function AccountLayout() {
     { label: "My Profile", to: "/account/profile", icon: UserRound },
     { label: "My Orders", to: "/account/orders", icon: PackageOpen },
     { label: "Wishlist", to: "/account/wishlist", icon: Heart },
-    { label: "Coupon", to: "/account/coupons", icon: Ticket },
     { label: "Review", to: "/account/reviews", icon: Star },
     { label: "Address Book", to: "/account/address", icon: MapPin },
     { label: "Notification", to: "/account/notifications", icon: Bell },
@@ -741,7 +784,6 @@ export function AccountDashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [wishlistCount, setWishlistCount] = useState(0);
-  const [couponCount, setCouponCount] = useState(0);
   const [hasAddress, setHasAddress] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -750,13 +792,11 @@ export function AccountDashboard() {
     Promise.all([
       api.orders().catch(() => []),
       api.wishlist().catch(() => []),
-      api.coupons().catch(() => []),
       api.defaultAddress().catch(() => null),
-    ]).then(([nextOrders, wishlist, coupons, address]) => {
+    ]).then(([nextOrders, wishlist, address]) => {
       if (!active) return;
       setOrders(nextOrders);
       setWishlistCount(wishlist.length);
-      setCouponCount(coupons.filter((coupon) => coupon.isActive).length);
       setHasAddress(Boolean(address));
     }).finally(() => {
       if (active) setLoading(false);
@@ -834,12 +874,6 @@ export function AccountDashboard() {
             <strong>Wishlist</strong>
             <small>Save the pieces you love</small>
             <span className="customer-feature-count">{loading ? "–" : wishlistCount}</span>
-          </Link>
-          <Link to="/account/coupons" className="customer-feature-tile coupons">
-            <span className="customer-feature-art"><Ticket size={34} /></span>
-            <strong>Coupon</strong>
-            <small>Offers for your next order</small>
-            <span className="customer-feature-count">{loading ? "–" : couponCount}</span>
           </Link>
         </div>
       </div>
@@ -1124,60 +1158,6 @@ export function AccountOrders() {
           </article>
         ))}
       </div>
-    </section>
-  );
-}
-
-export function AccountCoupons() {
-  const [coupons, setCoupons] = useState<Coupon[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<"available" | "special">("available");
-
-  useEffect(() => {
-    let active = true;
-    api.coupons().then((items) => {
-      if (active) setCoupons(items);
-    }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : "Could not load coupons");
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
-  }, []);
-
-  const now = Date.now();
-  const availableCoupons = coupons.filter((coupon) => coupon.isActive && new Date(coupon.startsAt).getTime() <= now && new Date(coupon.endsAt).getTime() >= now);
-
-  return (
-    <section className="account-page">
-      <AccountPageHeading icon={Ticket} kicker="SAVINGS FOR YOU" title="Coupon" />
-      <div className="account-tabs" role="tablist" aria-label="Coupons">
-        <button type="button" className={activeTab === "available" ? "on" : ""} role="tab" aria-selected={activeTab === "available"} onClick={() => setActiveTab("available")}>All Vouchers</button>
-        <button type="button" className={activeTab === "special" ? "on" : ""} role="tab" aria-selected={activeTab === "special"} onClick={() => setActiveTab("special")}>My Special Vouchers</button>
-      </div>
-      {error ? <p className="error" role="alert">{error}</p> : null}
-      {loading ? <RowsSkeleton rows={3} /> : activeTab === "special" || availableCoupons.length === 0 ? (
-        <div className="account-surface customer-empty-state">
-          <span><Ticket size={25} /></span>
-          <h2>{activeTab === "special" ? "No special vouchers yet" : "No coupons available"}</h2>
-          <p>Available offers will appear here when there’s something for your next order.</p>
-        </div>
-      ) : (
-        <div className="account-coupon-grid">
-          {availableCoupons.map((coupon) => {
-            const percentage = coupon.type.toUpperCase().includes("PERCENT");
-            return (
-              <article className="account-surface account-coupon-card" key={coupon.id}>
-                <span className="account-coupon-icon"><Ticket size={20} /></span>
-                <div><span className="account-page-kicker">YOUR VOUCHER</span><strong>{percentage ? `${coupon.value}% OFF` : `${money(coupon.value)} OFF`}</strong></div>
-                <code>{coupon.code}</code>
-                <small>Valid until {new Date(coupon.endsAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</small>
-              </article>
-            );
-          })}
-        </div>
-      )}
     </section>
   );
 }

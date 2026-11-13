@@ -231,7 +231,9 @@ export function AdminLayout() {
   const { settings } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const theme: string = "light";
+  const [theme, setTheme] = useState<"dark" | "light">(() =>
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+  );
   const visibleNav = NAV.filter((link) => link.to !== "/admin/staff" || user?.adminRole === "SUPER_ADMIN");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -240,6 +242,14 @@ export function AdminLayout() {
   const [notifications, setNotifications] = useState(readAdminNotifications);
   const [refreshError, setRefreshError] = useState("");
   const previousOrders = useRef<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const updateTheme = (event: MediaQueryListEvent) => setTheme(event.matches ? "dark" : "light");
+    mediaQuery.addEventListener("change", updateTheme);
+    return () => mediaQuery.removeEventListener("change", updateTheme);
+  }, []);
+
   useEffect(() => {
     if (!user || user.accountType !== "ADMIN") return;
 
@@ -381,7 +391,7 @@ export function AdminLayout() {
   }
 
   if (!ready) {
-    return <div className="admin-theme-root admin-theme-light grid min-h-screen place-items-center p-6"><div className="w-full max-w-xl"><RowsSkeleton rows={7} columns={2} /></div></div>;
+    return <div className={`admin-theme-root admin-theme-light${theme === "dark" ? " admin-theme-dark" : ""} grid min-h-screen place-items-center p-6`}><div className="w-full max-w-xl"><RowsSkeleton rows={7} columns={2} /></div></div>;
   }
   if (!user) return <Navigate to="/login" replace />;
   if (user.accountType !== "ADMIN") return <Navigate to="/" replace />;
@@ -399,7 +409,7 @@ export function AdminLayout() {
 
   return (
     <AdminNotificationContext.Provider value={notificationContextValue}>
-    <div className="admin-theme-root admin-theme-light min-h-screen p-2 antialiased sm:p-4">
+    <div className={`admin-theme-root admin-theme-light${theme === "dark" ? " admin-theme-dark" : ""} min-h-screen p-2 antialiased sm:p-4`}>
       <div className="admin-theme-panel relative flex min-h-[calc(100vh-1rem)] overflow-hidden rounded-[28px] shadow-[0_20px_50px_rgba(16,24,40,0.08)] sm:min-h-[calc(100vh-2rem)]">
         <aside className={`admin-theme-sidebar absolute inset-y-0 left-0 z-40 flex w-[232px] flex-col transition-transform lg:static lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
           <div className="admin-sidebar-brand flex items-center gap-3 px-5 pt-6 pb-5">
@@ -494,9 +504,6 @@ export function AdminLayout() {
                   </section>
                 ) : null}
               </div>
-              <button type="button" aria-label="Fixed color scheme" title="Fixed color scheme" className="admin-topbar-icon-button hidden" disabled>
-                <Icon d={theme === "dark" ? "M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" : "M20.4 15.4A8.5 8.5 0 0 1 8.6 3.6 8.6 8.6 0 1 0 20.4 15.4Z"} />
-              </button>
               <span className="admin-topbar-divider mx-0.5 hidden h-6 w-px sm:block" aria-hidden="true" />
               <span className="admin-topbar-user inline-flex h-9 items-center gap-2 rounded-xl px-2.5 text-xs">
                 <UserFace user={user} size={24} />
@@ -1464,6 +1471,8 @@ type AdminProduct = ProductCardData & {
 };
 
 export function AdminProducts() {
+  const { user } = useAuth();
+  const canDeleteProducts = user?.adminRole === "SUPER_ADMIN";
   const [params] = useSearchParams();
   const search = params.get("search") ?? "";
   const [page, setPage] = useState(1);
@@ -1707,25 +1716,27 @@ export function AdminProducts() {
                           <Icon d="m15 5 4 4M4 20l4.5-1 10.2-10.2a2.1 2.1 0 0 0-3-3L5.5 16 4 20z" />
                           Edit
                         </Link>
-                        <button
-                          type="button"
-                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 text-sm font-medium text-rose-300 transition-colors duration-200 hover:border-rose-700 hover:bg-rose-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#202630]"
-                          onClick={() => {
-                          if (!window.confirm(`Delete ${product.name}?`)) return;
-                          api.deleteProduct(product.id).then((result) => {
-                            if (result.archived) {
-                              setItems((current) => current.map((item) => item.id === product.id ? { ...item, status: "ARCHIVED" } : item));
-                              setError(result.message);
-                              return;
-                            }
-                            setItems((current) => current.filter((item) => item.id !== product.id));
-                            setError("");
-                          }).catch((reason) => setError(reason instanceof ApiError ? reason.message : "Could not delete the product"));
-                        }}
+                        {canDeleteProducts ? (
+                          <button
+                            type="button"
+                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 text-sm font-medium text-rose-300 transition-colors duration-200 hover:border-rose-700 hover:bg-rose-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#202630]"
+                            onClick={() => {
+                              if (!window.confirm(`Delete ${product.name}?`)) return;
+                              api.deleteProduct(product.id).then((result) => {
+                                if (result.archived) {
+                                  setItems((current) => current.map((item) => item.id === product.id ? { ...item, status: "ARCHIVED" } : item));
+                                  setError(result.message);
+                                  return;
+                                }
+                                setItems((current) => current.filter((item) => item.id !== product.id));
+                                setError("");
+                              }).catch((reason) => setError(reason instanceof ApiError ? reason.message : "Could not delete the product"));
+                            }}
                           >
                             <Icon d="M4 7h16M10 11v6m4-6v6M5 7l1 14h12l1-14M9 7V4h6v3" />
                             Delete
                           </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
