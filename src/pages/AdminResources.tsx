@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { ApiError, api } from "../api";
 import { ensureStandardFabrics, STANDARD_FABRICS } from "../catalogOptions";
 import { RowsSkeleton } from "../components/Skeleton";
@@ -1609,6 +1610,7 @@ export function AdminSizeGuides() {
 
 export function AdminVariants() {
   const [items, setItems] = useState<VariantRow[]>([]);
+  const [productsById, setProductsById] = useState<Record<string, ProductCardData>>({});
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [productId, setProductId] = useState("");
   const [productQuery, setProductQuery] = useState("");
@@ -1632,9 +1634,62 @@ export function AdminVariants() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [busyVariantId, setBusyVariantId] = useState<string | null>(null);
-  function load() {
+  const [editingVariant, setEditingVariant] = useState<VariantRow | null>(null);
+  const [editedStock, setEditedStock] = useState("");
+  const [savingStock, setSavingStock] = useState(false);
+
+  async function load() {
     setLoading(true);
-    api.variants({ limit: 50, page: 1 }).then(setItems).catch((reason) => setError(messageOf(reason, "Could not load variants"))).finally(() => setLoading(false));
+    setError("");
+    try {
+      const variants = await api.variants({ limit: 50, page: 1 });
+      setItems(variants);
+      const productIds = [...new Set(variants.map((variant) => variant.productId))];
+      const productResults = await Promise.all(productIds.map(async (id) => {
+        try {
+          return [id, await api.product(id)] as const;
+        } catch {
+          return [id, null] as const;
+        }
+      }));
+      const loadedProducts: Record<string, ProductCardData> = {};
+      for (const [id, product] of productResults) {
+        if (product) loadedProducts[id] = product;
+      }
+      setProductsById(loadedProducts);
+      if (productResults.some((result) => result[1] === null)) {
+        setError("Could not load some product names. Their SKU links are still available.");
+      }
+    } catch (reason) {
+      setError(messageOf(reason, "Could not load variants"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveEditedStock(event: FormEvent) {
+    event.preventDefault();
+    if (!editingVariant) return;
+    const quantity = Number(editedStock);
+    if (!Number.isSafeInteger(quantity) || quantity < 0) {
+      setError("Enter a whole number greater than or equal to zero.");
+      return;
+    }
+
+    setSavingStock(true);
+    setError("");
+    try {
+      const updated = await api.saveVariant({ stock: quantity }, editingVariant.id);
+      setItems((current) => current.map((variant) =>
+        variant.id === updated.id ? { ...variant, stock: updated.stock } : variant,
+      ));
+      setNote(`Stock for ${editingVariant.sku} updated to ${updated.stock}.`);
+      setEditingVariant(null);
+    } catch (reason) {
+      setError(messageOf(reason, "Could not update variant stock"));
+    } finally {
+      setSavingStock(false);
+    }
   }
   useEffect(() => {
     load();
@@ -2072,8 +2127,16 @@ export function AdminVariants() {
                   return (
                     <tr key={item.id} className="border-t border-slate-700 transition-colors duration-200 hover:bg-slate-700/20">
                       <td className="px-5 py-4">
-                        <p className="font-mono font-semibold text-amber-200">{item.sku}</p>
-                        <p className="mt-1 max-w-40 truncate text-[10px] text-slate-500" title={item.productId}>Product {item.productId}</p>
+                        <Link
+                          className="font-mono font-semibold text-amber-200 underline decoration-amber-700/60 underline-offset-2 hover:text-amber-100"
+                          to={`/product/${encodeURIComponent(item.productId)}`}
+                          title={`View ${productsById[item.productId]?.name ?? "product"} page`}
+                        >
+                          {item.sku}
+                        </Link>
+                        <p className="mt-1 max-w-56 truncate text-xs font-medium text-slate-200" title={productsById[item.productId]?.name ?? item.productId}>
+                          {productsById[item.productId]?.name ?? `Product ${item.productId}`}
+                        </p>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex flex-wrap justify-end gap-1.5">
@@ -2096,6 +2159,18 @@ export function AdminVariants() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={busyVariantId === item.id || savingStock}
+                            className="rounded-lg border border-sky-700/60 bg-sky-950/30 px-2.5 py-1.5 text-xs font-medium text-sky-200 transition-colors hover:border-sky-500 hover:bg-sky-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50"
+                            onClick={() => {
+                              setEditingVariant(item);
+                              setEditedStock(String(item.stock));
+                              setError("");
+                            }}
+                          >
+                            Edit stock
+                          </button>
                           <button
                             type="button"
                             disabled={busyVariantId === item.id}
@@ -2155,6 +2230,61 @@ export function AdminVariants() {
           </div>
         )}
       </section>
+      {editingVariant ? (
+        <div className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !savingStock) setEditingVariant(null);
+        }}>
+          <form
+            className="w-full max-w-md space-y-4 rounded-2xl border border-slate-600 bg-[#202630] p-5 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-variant-stock-title"
+            onSubmit={saveEditedStock}
+          >
+            <div>
+              <h2 id="edit-variant-stock-title" className="text-base font-semibold text-slate-100">Edit variant stock</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                {productsById[editingVariant.productId]?.name ?? `Product ${editingVariant.productId}`}
+                {editingVariant.optionLabel ? ` · ${editingVariant.optionLabel}` : ""}
+              </p>
+              <p className="mt-1 font-mono text-xs text-amber-200">{editingVariant.sku}</p>
+            </div>
+            <label className="block text-xs font-medium text-slate-300">
+              Stock quantity
+              <input
+                autoFocus
+                className={`${variantFieldClass} mt-1.5`}
+                type="number"
+                min="0"
+                step="1"
+                inputMode="numeric"
+                required
+                value={editedStock}
+                onChange={(event) => setEditedStock(event.target.value)}
+              />
+            </label>
+            <p className="text-xs text-slate-400">This replaces the current stock count for this variant.</p>
+            {error ? <p className="rounded-xl border border-rose-900/60 bg-rose-950/30 px-3 py-2 text-sm text-rose-200" role="alert">{error}</p> : null}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={savingStock}
+                className="rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+                onClick={() => setEditingVariant(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingStock}
+                className="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:cursor-wait disabled:opacity-60"
+              >
+                {savingStock ? "Saving…" : "Save stock"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </Panel>
   );
 }
