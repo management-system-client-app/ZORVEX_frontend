@@ -39,6 +39,10 @@ const configuredApiUrl =
   import.meta.env.VITE_API_URL?.trim() ||
   "/api/v1";
 export const API_BASE = `${configuredApiUrl.replace(/\/+$/, "").replace(/\/api\/v1$/i, "")}/api/v1`;
+const configuredOauthUrl = import.meta.env.VITE_OAUTH_URL?.trim();
+export const OAUTH_BASE = configuredOauthUrl
+  ? `${configuredOauthUrl.replace(/\/+$/, "").replace(/\/api\/v1$/i, "")}/api/v1`
+  : "https://zorvex-backend.vercel.app/api/v1";
 const TOKEN_KEY = "store_token";
 const SESSION_KEY = "cart_session";
 export const DATA_REFRESH_INTERVAL = 60_000;

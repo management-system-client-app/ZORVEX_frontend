@@ -3830,6 +3830,35 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 }
 .login-tab-active { border-color: #2864a8; background: #2864a8; color: #fff; }
 .login-divider { margin: 16px 0 18px; border-top: 1px solid #2864a8; }
+.login-google-button {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid #c8c8c8;
+  border-radius: 5px;
+  background: #fff;
+  color: #30343b;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color .18s ease, border-color .18s ease;
+}
+.login-google-button:hover { border-color: #9aa3ad; background: #f8f9fa; }
+.login-google-button:focus-visible { outline: 2px solid #2864a8; outline-offset: 2px; }
+.login-google-button svg { width: 18px; height: 18px; flex: none; }
+.login-or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: #777;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.login-or-divider::before,
+.login-or-divider::after { height: 1px; flex: 1; background: #e2e5e8; content: ""; }
 .login-field { display: grid; gap: 5px; margin: 0 0 14px; }
 .login-field > span:first-child { color: #17191c; font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; }
 .login-field > span:first-child b { color: #dc2626; }
@@ -13180,6 +13209,11 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   .login-auth .login-tab:hover { border-color: #607789; background: #283442; }
   .login-auth .login-tab-active { border-color: #286da5; background: #286da5; color: #fff; }
   .login-auth .login-divider { border-color: #39434e; }
+  .login-auth .login-google-button { border-color: #46515e; background: #171d24; color: #edf2f6; }
+  .login-auth .login-google-button:hover { border-color: #607789; background: #283442; }
+  .login-auth .login-or-divider { color: #aab8c3; }
+  .login-auth .login-or-divider::before,
+  .login-auth .login-or-divider::after { background: #39434e; }
   .login-auth .login-field > span:first-child { color: #d7e0e7; }
   .login-auth .login-field input {
     border-color: #46515e;

@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
     .replace(/\/+$/, "")
     .replace(/\/api\/v1$/i, "")
     .replace(/\/api$/i, "");
-  const preferredPort = Number(env.PORT || process.env.PORT || 5173);
+  const preferredPort = Number(env.PORT || process.env.PORT || 3000);
 
   const apiProxy = {
     "/api": {
