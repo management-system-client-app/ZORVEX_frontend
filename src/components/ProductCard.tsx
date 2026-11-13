@@ -99,18 +99,25 @@ export function ProductCarousel({
     const cards = Array.from(row.children).filter((card): card is HTMLElement => card instanceof HTMLElement);
     if (cards.length < 2) return;
 
-    const rowLeft = row.getBoundingClientRect().left;
-    const positions = cards.map((card) =>
-      card.getBoundingClientRect().left - rowLeft + row.scrollLeft,
-    );
+    const maxScroll = Math.max(row.scrollWidth - row.clientWidth, 0);
+    if (maxScroll <= 1) return;
+
+    if (direction > 0 && row.scrollLeft >= maxScroll - 2) {
+      row.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+    if (direction < 0 && row.scrollLeft <= 2) {
+      row.scrollTo({ left: maxScroll, behavior: "smooth" });
+      return;
+    }
+
+    const positions = cards.map((card) => card.offsetLeft);
     const currentIndex = positions.reduce(
       (current, position, index) => (position <= row.scrollLeft + 2 ? index : current),
       0,
     );
     const targetIndex = currentIndex + direction;
-    const maxScroll = Math.max(row.scrollWidth - row.clientWidth, 0);
-    const targetPosition =
-      targetIndex < 0 ? maxScroll : targetIndex >= cards.length ? 0 : positions[targetIndex];
+    const targetPosition = Math.min(positions[targetIndex] ?? maxScroll, maxScroll);
 
     row.scrollTo({ left: targetPosition, behavior: "smooth" });
   }, []);

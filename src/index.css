@@ -13197,3 +13197,10 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   .login-auth .register-photo-picker > span { color: #c4ccd5; }
   .login-auth .register-avatar-preview { border-color: #46596a; background: #283442; box-shadow: 0 0 0 4px #252d36; }
 }
+
+@media (min-width: 900px) {
+  .store-shell.theme-light .home .product-carousel .product-row {
+    grid-auto-columns: calc((100% - 48px) / 5);
+    gap: 12px;
+  }
+}
