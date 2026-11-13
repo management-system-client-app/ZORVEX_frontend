@@ -9,6 +9,7 @@ import type { Color, Fabric, ProductImage } from "../types";
 type SizeRow = { sizeId: string; fabricId: string; colorId: string; stock: string };
 type GeneralVariantRow = { optionLabel: string; sku: string; stock: string; fabricId: string };
 const MAX_PRODUCT_IMAGES = 6;
+const PRODUCT_IMAGE_ACCEPT = "image/avif,image/jpeg,image/png,image/webp,.avif,.jpg,.jpeg,.png,.webp";
 
 const fieldClass =
   "h-11 w-full rounded-xl border border-slate-600 bg-[#171c24] px-3 text-sm text-white outline-none transition-all duration-200 ease-out placeholder:text-slate-500 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20";
@@ -57,7 +58,7 @@ function ColorImagePicker({
               <input
                 className="sr-only"
                 type="file"
-                accept="image/avif,image/jpeg,image/png,image/webp"
+                accept={PRODUCT_IMAGE_ACCEPT}
                 multiple
                 disabled={disabled}
                 aria-label={`Upload ${color.name} photos`}
@@ -742,7 +743,7 @@ export function AdminProductForm() {
           <input
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             type="file"
-            accept="image/avif,image/jpeg,image/png,image/webp"
+            accept={PRODUCT_IMAGE_ACCEPT}
             multiple
             disabled={existingImages.length + images.length >= MAX_PRODUCT_IMAGES}
             onChange={(event) => {
