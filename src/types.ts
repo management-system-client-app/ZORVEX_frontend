@@ -392,12 +392,23 @@ export type OrderResult = {
   paymentMethod: string;
   checkoutUrl: string | null;
   payTo: string | null;
+  codAdvance?: {
+    method: "STRIPE" | "BKASH" | "NAGAD" | "ROCKET";
+    amount: string | number;
+    remainingAmount: string | number;
+    status: string;
+    payTo: string | null;
+    checkoutUrl?: string | null;
+  } | null;
   emailed?: boolean;
   placedAt?: string;
   shippingFullName?: string;
   shippingPhone?: string;
   shippingLine1?: string;
   shippingCity?: string;
+  shippingDivision?: string;
+  shippingDistrict?: string;
+  shippingThana?: string;
   shippingPostalCode?: string;
   shippingCountry?: string;
   items?: {

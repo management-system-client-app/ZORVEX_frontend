@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import { Link, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { MessageCircle, Phone, X } from "lucide-react";
 import { Footer, Header } from "./components/Chrome";
-import { AccountCoupons, AccountDashboard, AccountLayout, AccountNotifications, AccountOrders, AccountProfile, AccountReturns, AccountReviews, AuthCallbackPage, CartPage, ChangePasswordPage, CmsPageView, DeliveryAddressPage, ForgotPage, LoginPage, OutletsPage, RegisterPage, ResetPage, TrackPage, WishlistPage } from "./pages/AccountPages";
+import { AccountCoupons, AccountDashboard, AccountLayout, AccountNotifications, AccountOrders, AccountProfile, AccountReturns, AccountReviews, AuthCallbackPage, ChangePasswordPage, CmsPageView, DeliveryAddressPage, ForgotPage, LoginPage, OutletsPage, RegisterPage, ResetPage, TrackPage, WishlistPage } from "./pages/AccountPages";
 import { AdminLayout, AdminOrderDetail, AdminOrders, AdminOverview, AdminProducts } from "./pages/AdminDashboard";
 import { AdminBanners, AdminCategories } from "./pages/AdminCatalog";
 import {
@@ -224,7 +224,7 @@ export function App() {
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/women" element={<ShopPage />} />
         <Route path="/product/:id" element={<ProductPage />} />
-        <Route path="/cart" element={<CartPage />} />
+        <Route path="/cart" element={<Navigate to="/checkout" replace />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />

@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useState } from "react";
+import { createContext, FormEvent, useContext, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Bell } from "lucide-react";
 import { ApiError, api } from "../api";
 import { UserFace } from "../components/Chrome";
 import { DetailSkeleton, RowsSkeleton, SkeletonBlock } from "../components/Skeleton";
@@ -63,6 +64,130 @@ function buyerEmail(order: AdminOrder) {
   return order.user?.email ?? order.guestEmail ?? "Guest checkout";
 }
 
+type AdminNotification = {
+  id: string;
+  kind: "NEW_ORDER" | "ORDER_CANCELLED";
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  createdAt: string;
+  read: boolean;
+};
+
+type AdminNotificationContextValue = {
+  notifications: AdminNotification[];
+  unreadCount: number;
+  markAllRead: () => void;
+  markRead: (id: string) => void;
+  refreshError: string;
+};
+
+const ADMIN_NOTIFICATIONS_KEY = "store_admin_order_notifications";
+const ADMIN_ORDER_SNAPSHOT_KEY = "store_admin_order_snapshot";
+const NOTIFICATION_POLL_INTERVAL = 30_000;
+const AdminNotificationContext = createContext<AdminNotificationContextValue>({
+  notifications: [],
+  unreadCount: 0,
+  markAllRead: () => undefined,
+  markRead: () => undefined,
+  refreshError: "",
+});
+
+function readAdminNotifications(): AdminNotification[] {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(ADMIN_NOTIFICATIONS_KEY) ?? "[]");
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((item): item is AdminNotification =>
+      typeof item === "object" &&
+      item !== null &&
+      "id" in item &&
+      typeof item.id === "string" &&
+      "kind" in item &&
+      (item.kind === "NEW_ORDER" || item.kind === "ORDER_CANCELLED") &&
+      "orderId" in item &&
+      typeof item.orderId === "string" &&
+      "orderNumber" in item &&
+      typeof item.orderNumber === "string" &&
+      "customerName" in item &&
+      typeof item.customerName === "string" &&
+      "customerEmail" in item &&
+      typeof item.customerEmail === "string" &&
+      "createdAt" in item &&
+      typeof item.createdAt === "string" &&
+      "read" in item &&
+      typeof item.read === "boolean",
+    ).slice(0, 30);
+  } catch (reason) {
+    console.warn("Admin notifications could not be read", reason);
+    return [];
+  }
+}
+
+function readAdminOrderSnapshot(): Record<string, string> | null {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(ADMIN_ORDER_SNAPSHOT_KEY) ?? "null");
+    if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return null;
+    return Object.fromEntries(
+      Object.entries(stored).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    );
+  } catch (reason) {
+    console.warn("Admin order notification history could not be read", reason);
+    return null;
+  }
+}
+
+function saveAdminNotifications(notifications: AdminNotification[]) {
+  try {
+    localStorage.setItem(ADMIN_NOTIFICATIONS_KEY, JSON.stringify(notifications));
+  } catch (reason) {
+    console.warn("Admin notifications could not be saved", reason);
+  }
+}
+
+function saveAdminOrderSnapshot(snapshot: Record<string, string>) {
+  try {
+    localStorage.setItem(ADMIN_ORDER_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch (reason) {
+    console.warn("Admin order notification history could not be saved", reason);
+  }
+}
+
+function AdminNotificationFeed({ limit = 5 }: { limit?: number }) {
+  const { notifications, markRead } = useContext(AdminNotificationContext);
+
+  if (notifications.length === 0) {
+    return <p className="px-4 py-5 text-center text-sm text-slate-400">New orders and cancellations will appear here.</p>;
+  }
+
+  return (
+    <ul className="divide-y divide-slate-700">
+      {notifications.slice(0, limit).map((notification) => (
+        <li key={notification.id}>
+          <Link
+            to={`/admin/orders/${notification.orderId}`}
+            onClick={() => markRead(notification.id)}
+            className={`block px-4 py-3 transition-colors hover:bg-white/5 ${notification.read ? "" : "bg-teal-950/20"}`}
+          >
+            <span className="flex items-start gap-2">
+              <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${notification.read ? "bg-transparent" : "bg-teal-300"}`} aria-hidden="true" />
+              <span className="min-w-0">
+                <strong className="block text-sm font-medium text-slate-100">
+                  {notification.kind === "NEW_ORDER" ? "New order" : "Order cancelled"} · #{notification.orderNumber}
+                </strong>
+                <span className="mt-1 block truncate text-xs text-slate-300">{notification.customerName} · {notification.customerEmail}</span>
+                <time className="mt-1 block text-[10px] text-slate-500" dateTime={notification.createdAt}>
+                  {new Date(notification.createdAt).toLocaleString()}
+                </time>
+              </span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${STATUS_TONE[status] ?? "bg-slate-100 text-slate-700 ring-slate-200"}`}>
@@ -106,30 +231,175 @@ export function AdminLayout() {
   const { settings } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const theme: string = "light";
   const visibleNav = NAV.filter((link) => link.to !== "/admin/staff" || user?.adminRole === "SUPER_ADMIN");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const stored = localStorage.getItem("store_theme");
-    if (stored === "light" || stored === "dark") return stored;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  });
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const [notifications, setNotifications] = useState(readAdminNotifications);
+  const [refreshError, setRefreshError] = useState("");
+  const previousOrders = useRef<Record<string, string> | null>(null);
+  useEffect(() => {
+    if (!user || user.accountType !== "ADMIN") return;
+
+    let active = true;
+    let refreshing = false;
+    let hasBaseline = false;
+    const snapshot = readAdminOrderSnapshot();
+    previousOrders.current = snapshot;
+    hasBaseline = snapshot !== null;
+    setNotifications(readAdminNotifications());
+
+    const checkForOrderUpdates = async () => {
+      if (!active || refreshing || document.visibilityState !== "visible") return;
+      refreshing = true;
+      try {
+        const { items } = await api.adminOrders({ page: 1, limit: 100 }, { fresh: true });
+        if (!active) return;
+
+        const prior = previousOrders.current ?? {};
+        const nextSnapshot: Record<string, string> = {};
+        const detected: AdminNotification[] = [];
+        for (const order of items) {
+          nextSnapshot[order.id] = order.status;
+          const previousStatus = prior[order.id];
+          const addNotification = (kind: AdminNotification["kind"]) => {
+            detected.push({
+              id: `${kind}:${order.id}`,
+              kind,
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              customerName: buyer(order).trim() || "Customer",
+              customerEmail: buyerEmail(order),
+              createdAt: new Date().toISOString(),
+              read: false,
+            });
+          };
+          if (hasBaseline && previousStatus === undefined) addNotification("NEW_ORDER");
+          if (hasBaseline && previousStatus !== "CANCELLED" && order.status === "CANCELLED") {
+            addNotification("ORDER_CANCELLED");
+          }
+        }
+
+        previousOrders.current = nextSnapshot;
+        saveAdminOrderSnapshot(nextSnapshot);
+        hasBaseline = true;
+        setRefreshError("");
+
+        if (detected.length > 0) {
+          setNotifications((current) => {
+            const existingIds = new Set(current.map((item) => item.id));
+            const added = detected.filter((item) => !existingIds.has(item.id));
+            if (added.length === 0) return current;
+            const updated = [...added, ...current].slice(0, 30);
+            saveAdminNotifications(updated);
+            return updated;
+          });
+          for (const item of detected.slice(0, 3)) {
+            window.dispatchEvent(new CustomEvent("app:toast", {
+              detail: {
+                type: "success",
+                message: item.kind === "NEW_ORDER"
+                  ? `New order #${item.orderNumber} from ${item.customerName}`
+                  : `Order #${item.orderNumber} cancelled · Customer: ${item.customerName}`,
+              },
+            }));
+          }
+        }
+      } catch (reason) {
+        if (active) {
+          setRefreshError(reason instanceof ApiError ? reason.message : "Could not check for new orders");
+          console.error("Admin order notifications could not be refreshed", reason);
+        }
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    void checkForOrderUpdates();
+    const timer = window.setInterval(() => void checkForOrderUpdates(), NOTIFICATION_POLL_INTERVAL);
+    const refreshOnFocus = () => void checkForOrderUpdates();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void checkForOrderUpdates();
+    };
+    const syncNotifications = (event: StorageEvent) => {
+      if (event.key === ADMIN_NOTIFICATIONS_KEY) setNotifications(readAdminNotifications());
+    };
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("storage", syncNotifications);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("storage", syncNotifications);
+    };
+  }, [user?.accountType, user?.id]);
 
   useEffect(() => {
-    localStorage.setItem("store_theme", theme);
-  }, [theme]);
+    setNotificationOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!notificationOpen) return;
+
+    function dismissOnOutsidePointer(event: PointerEvent) {
+      if (event.target instanceof Node && !notificationRef.current?.contains(event.target)) {
+        setNotificationOpen(false);
+      }
+    }
+
+    function dismissOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setNotificationOpen(false);
+    }
+
+    document.addEventListener("pointerdown", dismissOnOutsidePointer);
+    document.addEventListener("keydown", dismissOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOnOutsidePointer);
+      document.removeEventListener("keydown", dismissOnEscape);
+    };
+  }, [notificationOpen]);
+
+  function markAllNotificationsRead() {
+    setNotifications((current) => {
+      if (!current.some((item) => !item.read)) return current;
+      const updated = current.map((item) => ({ ...item, read: true }));
+      saveAdminNotifications(updated);
+      return updated;
+    });
+  }
+
+  function markNotificationRead(id: string) {
+    setNotifications((current) => {
+      const updated = current.map((item) => item.id === id ? { ...item, read: true } : item);
+      saveAdminNotifications(updated);
+      return updated;
+    });
+  }
 
   if (!ready) {
-    return <div className={`admin-theme-root grid min-h-screen place-items-center p-6 ${theme === "dark" ? "admin-theme-dark" : "admin-theme-light"}`}><div className="w-full max-w-xl"><RowsSkeleton rows={7} columns={2} /></div></div>;
+    return <div className="admin-theme-root admin-theme-light grid min-h-screen place-items-center p-6"><div className="w-full max-w-xl"><RowsSkeleton rows={7} columns={2} /></div></div>;
   }
   if (!user) return <Navigate to="/login" replace />;
   if (user.accountType !== "ADMIN") return <Navigate to="/" replace />;
 
   const title = visibleNav.find((link) => (link.end ? location.pathname === link.to : location.pathname.startsWith(link.to)))?.label ?? "Overview";
   const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  const unreadCount = notifications.filter((item) => !item.read).length;
+  const notificationContextValue: AdminNotificationContextValue = {
+    notifications,
+    unreadCount,
+    markAllRead: markAllNotificationsRead,
+    markRead: markNotificationRead,
+    refreshError,
+  };
 
   return (
-    <div className={`admin-theme-root min-h-screen p-2 antialiased sm:p-4 ${theme === "dark" ? "admin-theme-dark" : "admin-theme-light"}`}>
+    <AdminNotificationContext.Provider value={notificationContextValue}>
+    <div className="admin-theme-root admin-theme-light min-h-screen p-2 antialiased sm:p-4">
       <div className="admin-theme-panel relative flex min-h-[calc(100vh-1rem)] overflow-hidden rounded-[28px] shadow-[0_20px_50px_rgba(16,24,40,0.08)] sm:min-h-[calc(100vh-2rem)]">
         <aside className={`admin-theme-sidebar absolute inset-y-0 left-0 z-40 flex w-[232px] flex-col transition-transform lg:static lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
           <div className="admin-sidebar-brand flex items-center gap-3 px-5 pt-6 pb-5">
@@ -197,7 +467,34 @@ export function AdminLayout() {
               </button>
             </form>
             <div className="admin-topbar-actions ml-auto flex items-center gap-1.5 sm:gap-2">
-              <button type="button" aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} className="admin-topbar-icon-button grid h-9 w-9 place-items-center rounded-xl" onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}>
+              <div className="relative" ref={notificationRef}>
+                <button
+                  type="button"
+                  aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+                  aria-expanded={notificationOpen}
+                  aria-haspopup="dialog"
+                  title="Notifications"
+                  className="admin-topbar-icon-button relative grid h-9 w-9 place-items-center rounded-xl"
+                  onClick={() => setNotificationOpen((current) => !current)}
+                >
+                  <Bell size={17} aria-hidden="true" />
+                  {unreadCount > 0 ? <span className="absolute -top-1 -right-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
+                </button>
+                {notificationOpen ? (
+                  <section role="dialog" aria-label="Order notifications" className="absolute top-full right-0 z-50 mt-2 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-700 bg-[#202630] shadow-2xl">
+                    <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-100">Order notifications</h2>
+                        <p className="mt-0.5 text-[10px] text-slate-400">{unreadCount} unread</p>
+                      </div>
+                      {unreadCount > 0 ? <button type="button" className="text-[11px] font-medium text-teal-300 hover:text-teal-200" onClick={markAllNotificationsRead}>Mark all read</button> : null}
+                    </header>
+                    {refreshError ? <p className="border-b border-rose-900/60 bg-rose-950/30 px-4 py-2 text-xs text-rose-200" role="alert">{refreshError}</p> : null}
+                    <div className="max-h-[min(65vh,420px)] overflow-y-auto"><AdminNotificationFeed limit={8} /></div>
+                  </section>
+                ) : null}
+              </div>
+              <button type="button" aria-label="Fixed color scheme" title="Fixed color scheme" className="admin-topbar-icon-button hidden" disabled>
                 <Icon d={theme === "dark" ? "M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" : "M20.4 15.4A8.5 8.5 0 0 1 8.6 3.6 8.6 8.6 0 1 0 20.4 15.4Z"} />
               </button>
               <span className="admin-topbar-divider mx-0.5 hidden h-6 w-px sm:block" aria-hidden="true" />
@@ -230,6 +527,7 @@ export function AdminLayout() {
         </div>
       </div>
     </div>
+    </AdminNotificationContext.Provider>
   );
 }
 
@@ -383,6 +681,7 @@ function StatusRing({ delivered, open }: { delivered: number; open: number }) {
 }
 
 export function AdminOverview() {
+  const { unreadCount, markAllRead, refreshError } = useContext(AdminNotificationContext);
   const [overview, setOverview] = useState<DashboardOverview | null>(() => cachedAdminOverview?.overview ?? null);
   const [orders, setOrders] = useState<AdminOrder[]>(() => cachedAdminOverview?.orders ?? []);
   const [offers, setOffers] = useState<Offer[]>(() => cachedAdminOverview?.offers ?? []);
@@ -466,6 +765,23 @@ export function AdminOverview() {
         </div>
         <span className="inline-flex items-center gap-2 rounded-lg border border-teal-800/40 bg-teal-950/20 px-3 py-1.5 text-xs font-medium text-teal-200"><Icon d="M7 3v4m10-4v4M4 9h16M5 5h14v16H5z" />Overview · {overviewDate}</span>
       </header>
+      <section className="overflow-hidden rounded-2xl border border-slate-700 border-t-2 border-t-teal-500 bg-[#202630] shadow-sm">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl border border-teal-800/50 bg-teal-950/25 text-teal-200"><Bell size={17} aria-hidden="true" /></span>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">Order notifications</h2>
+              <p className="mt-0.5 text-xs text-slate-400">New orders and cancelled orders · {unreadCount} unread</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 ? <button type="button" className="rounded-lg border border-slate-600 bg-[#171c24] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-teal-700 hover:text-teal-200" onClick={markAllRead}>Mark all read</button> : null}
+            <Link to="/admin/orders" className="rounded-lg border border-teal-700/50 bg-teal-950/25 px-3 py-1.5 text-xs font-semibold text-teal-200 transition-colors hover:border-teal-500">All orders</Link>
+          </div>
+        </header>
+        {refreshError ? <p className="border-b border-rose-900/60 bg-rose-950/30 px-5 py-2 text-xs text-rose-200" role="alert">{refreshError}</p> : null}
+        <AdminNotificationFeed />
+      </section>
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-700 border-l-2 border-l-emerald-500 bg-[#171c24] p-5">
         <div>
           <h2 className="text-sm font-semibold text-slate-100">Product management</h2>

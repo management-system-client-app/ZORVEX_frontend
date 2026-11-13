@@ -1,13 +1,14 @@
 import { FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, Navigate, Outlet as RouterOutlet, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BadgeCheck, Bell, Clock3, Eye, EyeOff, Heart, ImagePlus, LayoutDashboard, LogOut, MapPin, PackageCheck, PackageOpen, ShieldCheck, ShoppingBag, Star, Ticket, Trash2, Truck, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, Bell, Clock3, Eye, EyeOff, Heart, ImagePlus, LayoutDashboard, LogOut, MapPin, PackageCheck, PackageOpen, ShieldCheck, ShoppingBag, Star, Ticket, Truck, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ApiError, api, DATA_REFRESH_INTERVAL } from "../api";
+import { AddressLocationFields } from "../components/AddressLocationFields";
 import { BrandLogo, UserFace } from "../components/Chrome";
 import { ProductGrid } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
 import { money, titleCaseStatus } from "../format";
-import { useAuth, useCart } from "../state";
+import { useAuth } from "../state";
 import type { CmsPage, Coupon, Outlet, ProductCardData, TrackedOrder } from "../types";
 
 const OAUTH_TOKEN_KEY = "oauth_token";
@@ -1044,8 +1045,15 @@ export function DeliveryAddressPage() {
           <label className="field"><span>Recipient name</span><input required value={address.fullName} onChange={(event) => setAddress({ ...address, fullName: event.target.value })} /></label>
           <label className="field"><span>Contact number</span><input required minLength={7} value={address.phone} onChange={(event) => setAddress({ ...address, phone: event.target.value })} /></label>
           <label className="field"><span>Country</span><input required value={address.country} onChange={(event) => setAddress({ ...address, country: event.target.value })} /></label>
-          <label className="field"><span>District / City</span><input required minLength={2} value={address.city} onChange={(event) => setAddress({ ...address, city: event.target.value })} /></label>
-          <label className="field"><span>Area / State</span><input value={address.state} onChange={(event) => setAddress({ ...address, state: event.target.value })} /></label>
+          <AddressLocationFields
+            district={address.city}
+            division={address.state}
+            onChange={({ district, division }) => setAddress((current) => ({
+              ...current,
+              city: district,
+              state: division,
+            }))}
+          />
           <label className="field"><span>Post code</span><input required value={address.postalCode} onChange={(event) => setAddress({ ...address, postalCode: event.target.value })} /></label>
           <label className="field account-field-wide"><span>Address</span><input required value={address.line1} onChange={(event) => setAddress({ ...address, line1: event.target.value })} /></label>
           <label className="field account-field-wide"><span>Address line 2</span><input value={address.line2} onChange={(event) => setAddress({ ...address, line2: event.target.value })} /></label>
@@ -1277,79 +1285,6 @@ export function AccountReturns() {
           <button className="account-primary-action" type="submit">Request return <ArrowRight size={16} /></button>
         </footer>
       </form> : null}
-    </section>
-  );
-}
-
-export function CartPage() {
-  const { cart, remove, setQuantity, busy, loading } = useCart();
-  return (
-    <section className="full-cart-page">
-      <header className="full-cart-heading">
-        <div>
-          <span className="full-cart-kicker">YOUR SELECTION</span>
-          <h1><ShoppingBag size={25} /> Shopping cart</h1>
-          <p>Review your items before heading to checkout.</p>
-        </div>
-        {!loading && cart.items.length > 0 ? <span className="full-cart-count">{cart.summary.itemCount} {cart.summary.itemCount === 1 ? "item" : "items"}</span> : null}
-      </header>
-      {loading ? <div className="full-cart-loading"><RowsSkeleton rows={3} /></div> : null}
-      {!loading && cart.items.length === 0 ? (
-        <div className="full-cart-empty">
-          <span><ShoppingBag size={30} /></span>
-          <h2>Your cart is ready for something special</h2>
-          <p>Browse the collection and add your favorites to get started.</p>
-          <Link to="/shop" className="account-primary-action">Explore the shop <ArrowRight size={16} /></Link>
-        </div>
-      ) : null}
-      {!loading && cart.items.length > 0 ? (
-        <div className="full-cart-layout">
-          <div className="full-cart-items">
-            {cart.items.map((line) => (
-              <article className="full-cart-item" key={line.id}>
-                <Link className="full-cart-item-image" to={`/product/${line.variant.product.id}`}>
-                  {line.imageUrl ? <img src={line.imageUrl} alt={line.variant.product.name} /> : <div className="photo-fallback" />}
-                </Link>
-                <div className="full-cart-item-details">
-                  <div className="full-cart-item-top">
-                    <div>
-                      <span className="full-cart-item-label">IN YOUR CART</span>
-                      <Link to={`/product/${line.variant.product.id}`} className="full-cart-product-name">{line.variant.product.name}</Link>
-                      <div className="full-cart-variant">
-                        {line.variant.optionLabel ? <span>{line.variant.optionLabel}</span> : null}
-                        {line.variant.size ? <span>Size: {line.variant.size.name}</span> : null}
-                        {line.variant.color ? <span>Color: {line.variant.color.name}</span> : null}
-                        {line.variant.fabric ? <span>{line.variant.fabric.name}</span> : null}
-                      </div>
-                    </div>
-                    <button type="button" className="full-cart-remove" disabled={busy} onClick={() => remove(line.id)} aria-label={`Remove ${line.variant.product.name}`}><Trash2 size={15} /><span>Remove</span></button>
-                  </div>
-                  <div className="full-cart-item-bottom">
-                    <div className="full-cart-quantity-wrap">
-                      <span>Quantity</span>
-                      <div className="full-cart-quantity" aria-label="Quantity">
-                      <button type="button" disabled={busy} onClick={() => setQuantity(line, line.quantity - 1)} aria-label="Decrease quantity">−</button>
-                      <span>{line.quantity}</span>
-                      <button type="button" disabled={busy} onClick={() => setQuantity(line, line.quantity + 1)} aria-label="Increase quantity">+</button>
-                      </div>
-                    </div>
-                    <div className="full-cart-line-total"><span>Item total</span><strong>{money(line.lineTotal)}</strong></div>
-                  </div>
-                </div>
-              </article>
-            ))}
-            <Link to="/shop" className="full-cart-continue"><ArrowLeft size={15} /> Continue shopping</Link>
-          </div>
-          <aside className="full-cart-summary">
-            <span className="full-cart-summary-kicker">ORDER SUMMARY</span>
-            <h2>Cart total</h2>
-            <div><span>Items ({cart.summary.itemCount})</span><strong>{money(cart.summary.subtotal)}</strong></div>
-            <div className="full-cart-subtotal"><span>Subtotal</span><strong>{money(cart.summary.subtotal)}</strong></div>
-            <p>Delivery charges, if applicable, are calculated at checkout.</p>
-            <Link to="/checkout" className="full-cart-checkout">Proceed to checkout <ArrowRight size={17} /></Link>
-          </aside>
-        </div>
-      ) : null}
     </section>
   );
 }

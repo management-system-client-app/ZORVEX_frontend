@@ -611,9 +611,6 @@ function CartDrawer() {
           <Link to="/checkout" className="cart-checkout" onClick={() => setDrawer(false)}>
             Checkout <ArrowRight size={17} />
           </Link>
-          <Link to="/cart" className="cart-view-link" onClick={() => setDrawer(false)}>
-            View full cart
-          </Link>
         </footer> : null}
       </aside>
     </>

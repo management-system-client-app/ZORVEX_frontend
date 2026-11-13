@@ -436,8 +436,12 @@ export const api = {
     request<{
       city: string;
       subtotal: number;
-      shippingAmount: number;
+      shippingAmount: number | string;
+      zoneId: string | null;
       zoneName: string | null;
+      deliveryDistrict: string;
+      advancePaymentAmount?: number | string | null;
+      advancePaymentCurrency?: string;
     }>(`/delivery-zones/quote${qs({ city, subtotal })}`).then((res) => res.data),
   quotePromotion: (couponCode?: string) =>
     request<{
@@ -454,6 +458,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }).then((res) => res.data),
+  createCodAdvanceCheckout: (body: { orderId: string } | { orderNumber: string; phone: string }) =>
+    request<{ url: string; paymentId: string; amount: number; currency: string }>(
+      "/payments/cod/advance/checkout",
+      { method: "POST", body: JSON.stringify(body) },
+    ).then((res) => res.data),
   submitManualPayment: (body: {
     orderId?: string;
     orderNumber?: string;
@@ -481,8 +490,11 @@ export const api = {
       }[]
     >("/orders").then((res) => res.data),
   dashboard: () => request<DashboardOverview>("/dashboard").then((res) => res.data),
-  adminOrders: (params: { page?: number; limit?: number; status?: string }) =>
-    request<AdminOrder[]>(`/orders${qs(params)}`).then((res) => ({
+  adminOrders: (
+    params: { page?: number; limit?: number; status?: string },
+    options: { fresh?: boolean } = {},
+  ) =>
+    request<AdminOrder[]>(`/orders${qs(params)}`, {}, options).then((res) => ({
       items: res.data,
       meta: res.meta ?? { page: 1, limit: 20, total: res.data.length, totalPages: 1 },
     })),
