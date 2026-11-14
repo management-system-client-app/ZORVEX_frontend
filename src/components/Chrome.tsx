@@ -92,10 +92,7 @@ function CategoryList({
 export function BrandLogo({ compact = false }: { compact?: boolean }) {
   return (
     <span className={`brand-logo${compact ? " is-compact" : ""}`}>
-      <span className="brand-logo-copy">
-        <span className="brand-logo-wordmark">Bazer<span className="brand-logo-accent">grid</span></span>
-        <span className="brand-logo-tag">SMART DEALS · BETTER LIVING</span>
-      </span>
+      <img className="brand-logo-image" src="/bazargrid-logo.png" alt="BazarGrid" />
     </span>
   );
 }

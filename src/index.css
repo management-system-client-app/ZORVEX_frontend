@@ -335,6 +335,17 @@ h1, h2, h3, p { margin: 0; }
   gap: 0;
   line-height: 1;
 }
+.brand-logo-image {
+  display: block;
+  width: 170px;
+  height: auto;
+}
+.brand-logo.is-compact .brand-logo-image { width: 140px; }
+.store-shell.theme-dark .brand-logo-image {
+  padding: 3px 5px;
+  border-radius: 8px;
+  background: #fff;
+}
 .brand-logo-copy {
   display: grid;
   gap: 4px;
