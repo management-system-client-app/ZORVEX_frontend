@@ -132,6 +132,14 @@ export function ProductPage() {
   const [recentLoading, setRecentLoading] = useState(false);
 
   useEffect(() => {
+    if (!product || product.id !== id) return;
+    const timer = window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("app:page-title", { detail: product.name }));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [id, product]);
+
+  useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.has("ref")) {
       const referralId = params.get("ref") ?? "";

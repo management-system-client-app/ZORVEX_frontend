@@ -160,13 +160,14 @@ function RouteDocumentTitle() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const route = pathname === "/" ? "Home" : pathname
-      .split("/")
-      .filter(Boolean)
-      .map((segment) => decodeURIComponent(segment).replace(/[-_]/g, " "))
-      .map((segment) => segment.replace(/\b\w/g, (letter) => letter.toUpperCase()))
-      .join(" / ");
-    document.title = `${route} | Bazergrid`;
+    document.title = "Bazergrid Trends";
+
+    const handlePageTitle = (event: Event) => {
+      const title = (event as CustomEvent<string>).detail;
+      if (title) document.title = `${title} | Bazergrid Trends`;
+    };
+    window.addEventListener("app:page-title", handlePageTitle);
+    return () => window.removeEventListener("app:page-title", handlePageTitle);
   }, [pathname]);
 
   return null;
