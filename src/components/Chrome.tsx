@@ -1,6 +1,6 @@
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, ChevronRight, Gift, Heart, House, LayoutGrid, Mail, MapPin, Menu, Minus, PackageSearch, Phone, Plus, Search, ShoppingBag, Trash2, UserRound, X, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, Gift, Heart, House, LayoutGrid, Mail, MapPin, Menu, Minus, PackageSearch, Phone, PiggyBank, Plus, Search, ShoppingBag, Trash2, UserRound, X } from "lucide-react";
 import { api } from "../api";
 import { RowsSkeleton } from "./Skeleton";
 import { coverImage, money } from "../format";
@@ -352,7 +352,7 @@ export function Header() {
           </form>
           <nav className="header-promo-links" aria-label="Store offers">
             <Link to="/#daily-deals"><Gift size={19} /><span><strong>Offers</strong><small>Latest offers</small></span></Link>
-            <Link to="/shop?sort=price_asc"><Zap size={19} /><span><strong>Budget finds</strong><small>Special deals</small></span></Link>
+            <Link to="/shop?sort=price_asc"><PiggyBank size={19} /><span><strong>Budget finds</strong><small>Special deals</small></span></Link>
           </nav>
           <div className="header-tools">
             <button

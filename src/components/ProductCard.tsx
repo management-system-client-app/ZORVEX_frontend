@@ -26,6 +26,11 @@ export function ProductCard({
     0,
   ) ?? 0;
   const soldOut = Array.isArray(product.variants) && availableStock === 0;
+  const availableSizes = Array.from(new Map(
+    (product.variants ?? [])
+      .filter((variant) => variant.size && variant.isActive !== false)
+      .map((variant) => [variant.size!.id, variant.size!] as const),
+  ).values());
 
   return (
     <article className={`card${dealCard ? " deal-card" : ""}${shopCard ? " shop-product-card" : ""}${soldOut ? " sold-out" : ""}`}>
@@ -58,6 +63,15 @@ export function ProductCard({
           {shopCard && product.category?.name ? <span className="shop-card-category">{product.category.name}</span> : null}
           {product.brand?.name ? <span className="card-brand">{product.brand.name}</span> : null}
           <h3>{product.name}</h3>
+        {availableSizes.length > 0 ? (
+          <div className="card-sizes" aria-label={`Sizes: ${availableSizes.map((size) => size.name).join(", ")}`}>
+            <span className="card-sizes-label">Sizes</span>
+            <div className="card-size-list">
+              {availableSizes.slice(0, 5).map((size) => <span className="card-size-chip" key={size.id}>{size.name}</span>)}
+              {availableSizes.length > 5 ? <span className="card-size-more">+{availableSizes.length - 5}</span> : null}
+            </div>
+          </div>
+        ) : null}
         {shopCard ? (
           <div className="shop-card-price-row">
             <p className="price">

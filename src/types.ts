@@ -87,6 +87,7 @@ export type ProductCardData = {
     reserved?: number;
     isActive?: boolean;
     optionLabel?: string | null;
+    size?: { id: string; name: string } | null;
     color?: { id: string; name: string; hexCode: string } | null;
   }[];
 };

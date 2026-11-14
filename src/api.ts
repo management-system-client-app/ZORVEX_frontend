@@ -61,15 +61,15 @@ function clearApiCache() {
 }
 
 function clearProductAndVariantCache() {
-  const isProductOrVariantPath = (key: string) => /:(?:\/products|\/variants)(?:\/|\?|$)/i.test(key);
+  const isProductVariantOrHomePath = (key: string) => /:(?:\/products|\/variants|\/home)(?:\/|\?|$)/i.test(key);
   for (const key of getCache.keys()) {
-    if (isProductOrVariantPath(key)) getCache.delete(key);
+    if (isProductVariantOrHomePath(key)) getCache.delete(key);
   }
   for (const key of pendingGets.keys()) {
-    if (isProductOrVariantPath(key)) pendingGets.delete(key);
+    if (isProductVariantOrHomePath(key)) pendingGets.delete(key);
   }
   for (const key of latestGetRequest.keys()) {
-    if (isProductOrVariantPath(key)) latestGetRequest.delete(key);
+    if (isProductVariantOrHomePath(key)) latestGetRequest.delete(key);
   }
 }
 
@@ -235,6 +235,7 @@ function request<T>(
         window.dispatchEvent(new Event("app:products-changed"));
       } else if (variantMutation) {
         window.dispatchEvent(new Event("app:variant-changed"));
+        window.dispatchEvent(new Event("app:products-changed"));
       }
     } else if (
       cacheable &&

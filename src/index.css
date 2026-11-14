@@ -13401,3 +13401,328 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
     font-weight: 600 !important;
   }
 }
+
+/* Fresh, softer styling for product cards across storefront grids. */
+.store-shell .card:not(.deal-card) {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #e7ece8;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgb(26 54 42 / 6%);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.store-shell .card:not(.deal-card) .card-photo {
+  overflow: hidden;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(145deg, #f6f8f4, #eef3ee);
+}
+.store-shell .card:not(.deal-card) .card-photo img.product-image {
+  transition: transform 250ms ease;
+}
+.store-shell .card:not(.deal-card):hover {
+  transform: translateY(-4px);
+  border-color: #d4e5d5;
+  box-shadow: 0 13px 26px rgb(21 76 46 / 12%);
+}
+.store-shell .card:not(.deal-card):hover .card-photo img.product-image {
+  transform: scale(1.045);
+}
+.store-shell .card:not(.deal-card) .flag {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  box-shadow: 0 3px 8px rgb(24 46 30 / 12%);
+}
+.store-shell .card:not(.deal-card) .card-copy { padding: 12px 13px 14px; }
+.store-shell .card:not(.deal-card) .card-brand {
+  color: #718477;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.store-shell .card:not(.deal-card) h3 {
+  margin-top: 5px;
+  color: #253a2d;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+.store-shell .card:not(.deal-card) .price {
+  margin-top: 8px;
+  color: #147344;
+  font-size: 16px;
+  font-weight: 850;
+}
+.store-shell .card:not(.deal-card) .price s { color: #98a49b; font-size: 11px; }
+.store-shell.theme-dark .card:not(.deal-card) {
+  border-color: #343c37;
+  background: #1c211e;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 16%);
+}
+.store-shell.theme-dark .card:not(.deal-card):hover { border-color: #55745d; }
+.store-shell.theme-dark .card:not(.deal-card) h3 { color: #edf4ed; }
+.store-shell.theme-dark .card:not(.deal-card) .price { color: #83d4a2; }
+.store-shell.theme-dark .card:not(.deal-card) .price s { color: #a2aaa4; }
+@media (prefers-reduced-motion: reduce) {
+  .store-shell .card:not(.deal-card),
+  .store-shell .card:not(.deal-card) .card-photo img.product-image { transition: none; }
+}
+.store-shell .card .flag.sale-flag {
+  border-color: #b91c1c !important;
+  background: #c62828 !important;
+  color: #fff !important;
+}
+.store-shell .card .price s {
+  display: inline-block;
+  color: #c62828 !important;
+  text-decoration-color: #c62828;
+  text-decoration-thickness: 2px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  line-height: 1.3;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.store-shell .card .flag.sale-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  white-space: nowrap;
+  border: 0 !important;
+  border-radius: 9px;
+  padding: 7px 11px;
+  background: linear-gradient(135deg, #e53e3e, #b91c1c) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: .035em;
+  box-shadow: 0 4px 10px rgb(185 28 28 / 32%);
+}
+
+/* Keep category artwork circular in both storefront color themes. */
+.store-shell .home-category-section .cat-tile,
+.store-shell.theme-light .home-category-section .cat-tile {
+  display: flex !important;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border: 0 !important;
+  border-radius: 0;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: center;
+}
+.store-shell .home-category-section .cat-photo,
+.store-shell.theme-light .home-category-section .cat-photo {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 3px solid #f3a62f;
+  border-radius: 50% !important;
+  background: #f3f6ef;
+  box-shadow: 0 5px 16px rgb(28 56 35 / 14%);
+}
+.store-shell .home-category-section .cat-photo img,
+.store-shell.theme-light .home-category-section .cat-photo img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50% !important;
+  object-fit: cover;
+}
+.store-shell .home-category-section .cat-tile > span,
+.store-shell.theme-light .home-category-section .cat-tile > span {
+  min-height: 0;
+  color: #344b3b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+}
+.store-shell.theme-dark .home-category-section .cat-tile > span { color: #e4e9ea; }
+@media (max-width: 599px) {
+  .store-shell .home-category-section .cat-tile { gap: 8px; }
+  .store-shell .home-category-section .cat-tile > span { font-size: 11px; }
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #b8d7c3;
+  border-radius: 999px;
+  padding: 0 13px;
+  color: #176b3d;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:first-child {
+  background: #f4faf5;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:last-child {
+  border-color: #e9911b;
+  background: linear-gradient(120deg, #f3a72f, #ffbe55);
+  color: #253321;
+  box-shadow: 0 3px 9px rgb(195 119 19 / 18%);
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:hover {
+  transform: translateY(-1px);
+  border-color: #176b3d;
+  background: #176b3d;
+  color: #fff;
+  text-decoration: none;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:last-child:hover {
+  border-color: #db8211;
+  background: #e9911b;
+  color: #172b3b;
+}
+.store-shell.theme-dark .header-tools .header-account-guest .account-chip.account-actions a:first-child {
+  border-color: #55745d;
+  background: #202a24;
+  color: #c9ecd2;
+}
+.store-shell.theme-dark .header-tools .header-account-guest .account-chip.account-actions a:first-child:hover {
+  background: #176b3d;
+  color: #fff;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:first-child {
+  min-height: 34px;
+  border-color: transparent;
+  border-radius: 6px;
+  padding-inline: 8px;
+  background: transparent;
+  color: #176b3d;
+  box-shadow: none;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:first-child:hover {
+  transform: none;
+  border-color: transparent;
+  background: transparent;
+  color: #df8515;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:last-child {
+  min-height: 36px;
+  border: 1px solid #176b3d;
+  border-radius: 9px;
+  padding-inline: 16px;
+  background: linear-gradient(135deg, #176b3d, #23834e);
+  color: #fff;
+  box-shadow: 0 5px 12px rgb(23 107 61 / 20%);
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:last-child:hover {
+  transform: translateY(-1px);
+  border-color: #df8515;
+  background: linear-gradient(135deg, #df8515, #f3a72f);
+  color: #173c28;
+}
+.store-shell.theme-dark .header-tools .header-account-guest .account-chip.account-actions a:first-child {
+  color: #d2ecd8;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:first-child,
+.store-shell.theme-dark .header-tools .header-account-guest .account-chip.account-actions a:first-child {
+  min-height: 36px;
+  border: 1px solid #a9cbb4;
+  border-radius: 9px;
+  padding-inline: 15px;
+  background: #f5faf6;
+  color: #176b3d;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:last-child {
+  min-height: 36px;
+  border: 1px solid #e9911b;
+  border-radius: 9px;
+  padding-inline: 15px;
+  background: linear-gradient(120deg, #f0a12a, #ffbd54);
+  color: #243322;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 3px 8px rgb(195 119 19 / 16%);
+}
+.store-shell.theme-dark .header-tools .header-account-guest .account-chip.account-actions a:first-child {
+  border-color: #55745d;
+  background: #202a24;
+  color: #d2ecd8;
+}
+.store-shell .card-sizes {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  overflow: hidden;
+}
+.store-shell .card-sizes-label {
+  flex: none;
+  color: #738477;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.store-shell .card-size-list {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+.store-shell .card-size-chip,
+.store-shell .card-size-more {
+  display: inline-flex;
+  min-width: 22px;
+  height: 21px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d7e6da;
+  border-radius: 6px;
+  padding: 0 5px;
+  background: #f4faf5;
+  color: #176b3d;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+}
+.store-shell .card-size-more {
+  border-color: #efd7ae;
+  background: #fff8eb;
+  color: #a55c0c;
+}
+.store-shell.theme-dark .card-sizes-label { color: #a7b8aa; }
+.store-shell.theme-dark .card-size-chip {
+  border-color: #3c5c46;
+  background: #24372a;
+  color: #bde8c8;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:first-child:hover {
+  border-color: #176b3d;
+  background: #e8f4eb;
+  color: #125631;
+  text-decoration: none;
+}
+.store-shell .header-tools .header-account-guest .account-chip.account-actions a:last-child:hover {
+  border-color: #d67c0e;
+  background: #e9911b;
+  color: #172b3b;
+}

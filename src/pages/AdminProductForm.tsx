@@ -112,6 +112,7 @@ export function AdminProductForm() {
   const [brandId, setBrandId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [inventoryMode, setInventoryMode] = useState<"general" | "apparel">("general");
+  const [shoeSizingEnabled, setShoeSizingEnabled] = useState(false);
   const [generalVariants, setGeneralVariants] = useState<GeneralVariantRow[]>([
     { optionLabel: "", sku: "", stock: "0", fabricId: "" },
   ]);
@@ -119,6 +120,7 @@ export function AdminProductForm() {
   const [addingShoeSizes, setAddingShoeSizes] = useState(false);
   const [rows, setRows] = useState<SizeRow[]>([]);
   const [existingVariantKeys, setExistingVariantKeys] = useState<string[]>([]);
+  const [existingGeneralVariantIds, setExistingGeneralVariantIds] = useState<string[]>([]);
   const [selectedSizeIds, setSelectedSizeIds] = useState<string[]>([]);
   const [selectedColorIds, setSelectedColorIds] = useState<string[]>([]);
   const [bulkFabricId, setBulkFabricId] = useState("");
@@ -135,7 +137,7 @@ export function AdminProductForm() {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(!editing);
   const selectedCategory = catalog.categories.find((category) => category.id === categoryId);
-  const isShoeCategory = isFootwearCategory(selectedCategory);
+  const isShoeCategory = isFootwearCategory(selectedCategory) || shoeSizingEnabled;
   const isApparelCategory = Boolean(selectedCategory && (["men", "women"].includes(selectedCategory.slug) || isShoeCategory));
 
   useEffect(() => setSizeOptions(catalog.sizes), [catalog.sizes]);
@@ -178,15 +180,21 @@ export function AdminProductForm() {
         setCompareAtPrice(product.compareAtPrice == null ? "" : String(product.compareAtPrice));
         setBrandId(product.brand.id);
         setCategoryId(product.category.id);
+        const isShoeProduct = isFootwearCategory(product.category);
+        setShoeSizingEnabled(isShoeProduct);
+        if (isShoeProduct) setInventoryMode("apparel");
         setExistingImages(product.images);
         const colorIds = [...new Set(product.variants.flatMap((variant) => variant.color ? [variant.color.id] : []))];
         setProductColorIds(colorIds);
         setSelectedColorIds(colorIds);
         setExistingVariantKeys(product.variants.flatMap((variant) =>
-          variant.size && variant.fabric
-            ? [`${variant.size.id}:${variant.fabric.id}:${variant.color?.id ?? ""}`]
+          variant.size
+            ? [`${variant.size.id}:${variant.fabric?.id ?? ""}:${variant.color?.id ?? ""}`]
             : [],
         ));
+        setExistingGeneralVariantIds(product.variants
+          .filter((variant) => !variant.size && !variant.fabric && !variant.color)
+          .map((variant) => variant.id));
         if (product.variants.some((variant) => variant.size)) setInventoryMode("apparel");
         setReady(true);
       })
@@ -255,45 +263,47 @@ export function AdminProductForm() {
     ? colors.filter((color) => productColorIds.includes(color.id))
     : colors.filter((color) => selectedColorIds.includes(color.id));
 
-  function addSelectedCombinations() {
+  function addSelectedCombinations(): boolean {
     setError("");
     if (selectedSizeIds.length === 0) {
       setError("Choose at least one size");
-      return;
+      return false;
     }
-    if (!bulkFabricId) {
+    if (!bulkFabricId && !isShoeCategory) {
       setError("Choose a fabric for these combinations");
-      return;
+      return false;
     }
 
     const colorIds = selectedColorIds.length > 0 ? selectedColorIds : [""];
+    const fabricId = bulkFabricId || "";
     const existing = new Set([
       ...existingVariantKeys,
-      rows
-        .filter((row) => row.sizeId && row.fabricId)
+      ...rows
+        .filter((row) => row.sizeId && (row.fabricId || isShoeCategory))
         .map((row) => `${row.sizeId}:${row.fabricId}:${row.colorId}`),
     ]);
     const additions: SizeRow[] = [];
     for (const sizeId of selectedSizeIds) {
       for (const colorId of colorIds) {
-        const key = `${sizeId}:${bulkFabricId}:${colorId}`;
+        const key = `${sizeId}:${fabricId}:${colorId}`;
         if (existing.has(key)) continue;
         existing.add(key);
-        additions.push({ sizeId, fabricId: bulkFabricId, colorId, stock: "" });
+        additions.push({ sizeId, fabricId, colorId, stock: "" });
       }
     }
 
-    const completeRowCount = rows.filter((row) => row.sizeId && row.fabricId).length;
+    const completeRowCount = rows.filter((row) => row.sizeId && (row.fabricId || isShoeCategory)).length;
     if (completeRowCount + additions.length > 30) {
       setError("A product can have at most 30 size, color and fabric combinations.");
-      return;
+      return false;
     }
     if (additions.length === 0) {
       setError("These combinations have already been added");
-      return;
+      return false;
     }
 
     setRows((current) => [...current, ...additions]);
+    return true;
   }
 
   function toggleSelection(selection: string[], value: string, update: (next: string[]) => void) {
@@ -302,6 +312,8 @@ export function AdminProductForm() {
 
   async function addShoeSizes() {
     setAddingShoeSizes(true);
+    setShoeSizingEnabled(true);
+    setInventoryMode("apparel");
     setError("");
     try {
       const latestSizes = await api.sizes({ fresh: true });
@@ -319,6 +331,9 @@ export function AdminProductForm() {
       }
       const refreshedSizes = await api.sizes({ fresh: true });
       setSizeOptions(refreshedSizes);
+      setSelectedSizeIds(refreshedSizes
+        .filter((size) => Number(size.name) >= 36 && Number(size.name) <= 46)
+        .map((size) => size.id));
     } catch (reason) {
       setError(messageOf(reason, "Could not add shoe sizes"));
     } finally {
@@ -329,6 +344,16 @@ export function AdminProductForm() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
+    if (inventoryMode === "apparel" && rows.length === 0 && selectedSizeIds.length > 0) {
+      if (addSelectedCombinations()) {
+        setError("Size combinations are ready. Enter stock for each size, then save again.");
+      }
+      return;
+    }
+    if (inventoryMode === "apparel" && rows.some((row) => row.stock.trim() === "")) {
+      setError("Enter stock for every size combination before saving. Use 0 if that size is out of stock.");
+      return;
+    }
     const price = Number(basePrice);
     const compare = compareAtPrice.trim() === "" ? undefined : Number(compareAtPrice);
     if (!Number.isFinite(price) || price <= 0) {
@@ -363,6 +388,15 @@ export function AdminProductForm() {
     setBusy(true);
     try {
       if (editing && id) {
+        const shouldRetireGeneralVariants = isShoeCategory && rows.length > 0 && existingGeneralVariantIds.length > 0
+          ? window.confirm(
+              "This shoe has general option(s), such as Standard. Saving shoe sizes will disable those options. Make sure stock is set for each shoe size. Continue?",
+            )
+          : false;
+        if (isShoeCategory && rows.length > 0 && existingGeneralVariantIds.length > 0 && !shouldRetireGeneralVariants) {
+          return;
+        }
+
         await api.updateProduct(id, {
           name: name.trim(),
           slug: productSlug,
@@ -398,16 +432,21 @@ export function AdminProductForm() {
           setExistingVariantKeys((current) => current.includes(key) ? current : [...current, key]);
           setRows((current) => current.filter((item) => `${item.sizeId}:${item.fabricId}:${item.colorId}` !== key));
         }
+        if (shouldRetireGeneralVariants) {
+          for (const variantId of existingGeneralVariantIds) {
+            await api.saveVariant({ isActive: false }, variantId);
+          }
+        }
         navigate(`/admin/products${location.search}`);
         return;
       }
 
       const sizes = inventoryMode === "apparel"
         ? rows
-            .filter((row) => row.sizeId && row.fabricId)
+            .filter((row) => row.sizeId && (row.fabricId || isShoeCategory))
             .map((row) => ({
               sizeId: row.sizeId,
-              fabricId: row.fabricId,
+              ...(row.fabricId ? { fabricId: row.fabricId } : {}),
               ...(row.colorId ? { colorId: row.colorId } : {}),
               stock: Number(row.stock) || 0,
             }))
@@ -421,7 +460,9 @@ export function AdminProductForm() {
           }))
         : undefined;
       if (inventoryMode === "apparel" && sizes?.length === 0) {
-        setError("Add at least one size and fabric");
+        setError(isShoeCategory
+          ? "Choose one or more shoe sizes, add combinations, and enter stock before saving."
+          : "Add at least one size and fabric");
         setBusy(false);
         return;
       }
@@ -600,7 +641,7 @@ export function AdminProductForm() {
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-700 text-xs font-bold text-white">B</span>
                 <h2 className="text-sm font-semibold text-slate-100">Variants & inventory</h2>
               </div>
-              <p className="mt-1.5 pl-10 text-xs text-slate-400">{isShoeCategory ? "Add EU shoe sizes, choose fabric and color, then set stock for each size." : "Choose sizes and colors, then set stock for each combination."}</p>
+              <p className="mt-1.5 pl-10 text-xs text-slate-400">{isShoeCategory ? "Add EU shoe sizes, optionally choose fabric and color, then set stock for each size." : "Choose sizes and colors, then set stock for each combination."}</p>
             </div>
           </div>
           <div className="space-y-5 p-5">
@@ -609,7 +650,7 @@ export function AdminProductForm() {
               General product
             </button>
             <button type="button" className={`rounded-lg border px-3 py-2 text-xs font-medium ${inventoryMode === "apparel" ? "border-amber-400 bg-amber-950/30 text-amber-100" : "border-slate-600 text-slate-300"}`} aria-pressed={inventoryMode === "apparel"} onClick={() => setInventoryMode("apparel")}>
-              Apparel sizes
+              Apparel / shoe sizes
             </button>
           </div>
           {inventoryMode === "general" ? (
@@ -660,11 +701,9 @@ export function AdminProductForm() {
             <div>
               <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Sizes</p>
-                {isShoeCategory ? (
-                  <button type="button" disabled={addingShoeSizes} onClick={() => void addShoeSizes()} className="rounded-lg border border-cyan-700/60 px-2.5 py-1.5 text-[11px] font-medium text-cyan-200 transition-colors hover:bg-cyan-950/40 disabled:cursor-wait disabled:opacity-50">
-                    {addingShoeSizes ? "Adding…" : "Add shoe sizes (EU 36–46)"}
-                  </button>
-                ) : null}
+                <button type="button" disabled={addingShoeSizes} onClick={() => void addShoeSizes()} className="rounded-lg border border-cyan-700/60 px-2.5 py-1.5 text-[11px] font-medium text-cyan-200 transition-colors hover:bg-cyan-950/40 disabled:cursor-wait disabled:opacity-50">
+                  {addingShoeSizes ? "Adding…" : "Add shoe sizes (EU 36–46)"}
+                </button>
               </div>
               <details className="group relative">
                 <summary className={`${fieldClass} flex cursor-pointer list-none items-center justify-between text-slate-300 [&::-webkit-details-marker]:hidden`}>
@@ -703,7 +742,7 @@ export function AdminProductForm() {
             </div>
             <div className="grid gap-2 border-t border-slate-700 pt-4 sm:grid-cols-[1fr_auto]">
               <select className={`${fieldClass} border-slate-600 bg-[#171c24] text-white`} value={bulkFabricId} onChange={(event) => setBulkFabricId(event.target.value)}>
-                <option value="">Choose fabric for variants</option>
+                <option value="">Choose fabric (optional for shoes)</option>
                 {fabrics.map((fabric) => (
                   <option key={fabric.id} value={fabric.id}>{fabric.name}</option>
                 ))}

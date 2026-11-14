@@ -406,31 +406,35 @@ export function ProductPage() {
     const map = new Map(variants.flatMap((variant) => hasProductSize(variant) && variant.size ? [[variant.size.id, variant.size] as const] : []));
     return [...map.values()];
   }, [variants]);
+  const selectableVariants = useMemo(
+    () => sizes.length > 0 ? variants.filter(hasProductSize) : variants,
+    [variants, sizes],
+  );
   const generalOptions = useMemo(
-    () => variants.filter((variant) => !hasProductSize(variant) && !hasProductFabric(variant) && !variant.color),
-    [variants],
+    () => selectableVariants.filter((variant) => !hasProductSize(variant) && !hasProductFabric(variant) && !variant.color),
+    [selectableVariants],
   );
   const isAvailable = (variant: (typeof variants)[number]) =>
     Math.max(variant.stock - (variant.reserved ?? 0), 0) > 0;
   const hasAvailableVariant = (matches: (typeof variants)[number][]) => matches.some(isAvailable);
   const colors = useMemo(() => {
-    if (variants.length > 0 && variants.every((variant) => !hasProductSize(variant) && !hasProductFabric(variant) && !variant.color)) return [];
-    const pool = variants.filter((variant) => !sizeId ? !hasProductSize(variant) : variant.size?.id === sizeId);
+    if (selectableVariants.length > 0 && selectableVariants.every((variant) => !hasProductSize(variant) && !hasProductFabric(variant) && !variant.color)) return [];
+    const pool = selectableVariants.filter((variant) => !sizeId ? !hasProductSize(variant) : variant.size?.id === sizeId);
     const map = new Map(pool.flatMap((variant) => (variant.color ? [[variant.color.id, variant.color] as const] : [])));
     return [...map.values()];
-  }, [variants, sizeId]);
+  }, [selectableVariants, sizeId]);
   const fabrics = useMemo(() => {
-    const pool = variants.filter(
+    const pool = selectableVariants.filter(
       (variant) =>
         (!sizeId ? !hasProductSize(variant) : variant.size?.id === sizeId) &&
         (!colorId || variant.color?.id === colorId),
     );
     const map = new Map(pool.flatMap((variant) => hasProductFabric(variant) && variant.fabric ? [[variant.fabric.id, variant.fabric] as const] : []));
     return [...map.values()];
-  }, [variants, sizeId, colorId]);
+  }, [selectableVariants, sizeId, colorId]);
   const selected = generalOptions.length > 0
     ? generalOptions.find((variant) => variant.id === selectedVariantId)
-    : variants.find(
+    : selectableVariants.find(
         (variant) =>
           (!sizeId ? !hasProductSize(variant) : variant.size?.id === sizeId) &&
           (variant.color?.id ?? null) === colorId &&
