@@ -27,6 +27,9 @@ importers:
         specifier: ^4.3.3
         version: 4.3.3
     devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6(undici-types@8.9.0)
       '@types/react':
         specifier: ^19.1.8
         version: 19.3.0
@@ -44,6 +47,14 @@ importers:
         version: 6.4.4(jiti@2.7.0)(lightningcss@1.32.0)
 
 packages:
+
+  '@types/node@26.6.6':
+    resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
+    dependencies:
+      undici-types: 8.9.0
+
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -888,6 +899,12 @@ packages:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
 
 snapshots:
+
+  '@types/node@26.6.6(undici-types@8.9.0)':
+    dependencies:
+      undici-types: 8.9.0
+
+  undici-types@8.9.0: {}
 
   '@babel/code-frame@7.29.7':
     dependencies:
