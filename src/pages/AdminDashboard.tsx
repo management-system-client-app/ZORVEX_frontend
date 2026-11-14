@@ -226,6 +226,15 @@ const NAV = [
   { section: "Preferences", to: "/admin/staff", label: "Staff", end: false, icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m8-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm7-3h6m-3-3v6" },
 ];
 
+const NAV_SECTION_HELP: Record<string, string> = {
+  Overview: "Store summary",
+  Catalog: "Products and options",
+  Sales: "Orders and payments",
+  Operations: "Delivery and locations",
+  Storefront: "What shoppers see",
+  Preferences: "People and settings",
+};
+
 export function AdminLayout() {
   const { user, ready, logout } = useAuth();
   const { settings } = useStore();
@@ -424,7 +433,12 @@ export function AdminLayout() {
           <nav aria-label="Admin sections" className="flex flex-1 flex-col overflow-y-auto px-3 pb-3">
             {visibleNav.map((link, index) => (
               <div key={link.to}>
-                {index === 0 || link.section !== visibleNav[index - 1].section ? <p className="admin-sidebar-section px-3 pt-4 pb-1.5">{link.section}</p> : null}
+                {index === 0 || link.section !== visibleNav[index - 1].section ? (
+                  <div className="px-3 pt-4 pb-1.5">
+                    <p className="admin-sidebar-section">{link.section}</p>
+                    <p className="mt-0.5 text-[9px] text-slate-500">{NAV_SECTION_HELP[link.section]}</p>
+                  </div>
+                ) : null}
                 <NavLink
                   to={link.to}
                   end={link.end}
@@ -538,20 +552,8 @@ export function AdminLayout() {
   );
 }
 
-type Offer = {
-  id: string;
-  name: string;
-  description: string | null;
-  type?: string;
-  value?: string | number;
-  startsAt?: string;
-  endsAt?: string;
-};
-
 type AdminOverviewData = {
   overview: DashboardOverview;
-  orders: AdminOrder[];
-  offers: Offer[];
   returns: StoreReturn[];
 };
 
@@ -565,8 +567,6 @@ function loadAdminOverviewData() {
       .then((overview) => {
         cachedAdminOverview = {
           overview,
-          orders: cachedAdminOverview?.orders ?? [],
-          offers: cachedAdminOverview?.offers ?? [],
           returns: cachedAdminOverview?.returns ?? [],
         };
         return overview;
@@ -580,16 +580,12 @@ function loadAdminOverviewData() {
 
 function loadAdminOverviewDetails() {
   if (!adminOverviewDetailsRequest) {
-    adminOverviewDetailsRequest = Promise.all([
-      api.adminOrders({ page: 1, limit: 100 }).then((result) => result.items),
-      api.promotions().then((items) => items as Offer[]),
-      api.returns(),
-    ])
-      .then(([orders, offers, returns]) => {
+    adminOverviewDetailsRequest = api.returns()
+      .then((returns) => {
         if (cachedAdminOverview) {
-          cachedAdminOverview = { ...cachedAdminOverview, orders, offers, returns };
+          cachedAdminOverview = { ...cachedAdminOverview, returns };
         }
-        return { orders, offers, returns };
+        return { returns };
       })
       .finally(() => {
         adminOverviewDetailsRequest = null;
@@ -598,100 +594,9 @@ function loadAdminOverviewDetails() {
   return adminOverviewDetailsRequest;
 }
 
-function dayKey(date: Date) {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function recentDays(count: number) {
-  const days: Date[] = [];
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  for (let index = count - 1; index >= 0; index -= 1) {
-    const day = new Date(start);
-    day.setDate(start.getDate() - index);
-    days.push(day);
-  }
-  return days;
-}
-
-function AreaChart({ points, labels }: { points: number[]; labels: string[] }) {
-  const width = 560;
-  const height = 150;
-  const max = Math.max(...points, 1);
-  const step = points.length > 1 ? width / (points.length - 1) : width;
-  const coords = points.map((point, index) => {
-    const x = index * step;
-    const y = height - 12 - (point / max) * (height - 28);
-    return [x, y] as const;
-  });
-  const line = coords.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x},${y}`).join(" ");
-  const fill = `${line} L${width},${height} L0,${height} Z`;
-  return (
-    <div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-40 w-full" role="img" aria-label="Revenue over the last 8 days">
-        <defs>
-          <linearGradient id="sales-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#d97706" stopOpacity="0.32" />
-            <stop offset="100%" stopColor="#d97706" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        <path d={fill} fill="url(#sales-fill)" />
-        <path d={line} fill="none" stroke="#d97706" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-      </svg>
-      <div className="mt-1 flex justify-between text-[11px] text-slate-400">
-        {labels.map((label) => (
-          <span key={label}>{label}</span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StatusRing({ delivered, open }: { delivered: number; open: number }) {
-  const total = delivered + open;
-  const radius = 52;
-  const circumference = 2 * Math.PI * radius;
-  const outer = total === 0 ? 0 : delivered / total;
-  const innerRadius = 36;
-  const innerCirc = 2 * Math.PI * innerRadius;
-  const inner = total === 0 ? 0 : open / total;
-  return (
-    <svg viewBox="0 0 160 160" className="h-44 w-44" role="img" aria-label="Delivered and open orders">
-      <circle cx="80" cy="80" r={radius} fill="none" stroke="#3b424f" strokeWidth="14" />
-      <circle
-        cx="80"
-        cy="80"
-        r={radius}
-        fill="none"
-        stroke="#047857"
-        strokeWidth="14"
-        strokeLinecap="round"
-        strokeDasharray={`${circumference * outer} ${circumference}`}
-        transform="rotate(-90 80 80)"
-      />
-      <circle cx="80" cy="80" r={innerRadius} fill="none" stroke="#303744" strokeWidth="10" />
-      <circle
-        cx="80"
-        cy="80"
-        r={innerRadius}
-        fill="none"
-        stroke="#9aa3b2"
-        strokeWidth="10"
-        strokeLinecap="round"
-        strokeDasharray={`${innerCirc * inner} ${innerCirc}`}
-        transform="rotate(-90 80 80)"
-      />
-    </svg>
-  );
-}
-
 export function AdminOverview() {
   const { unreadCount, markAllRead, refreshError } = useContext(AdminNotificationContext);
   const [overview, setOverview] = useState<DashboardOverview | null>(() => cachedAdminOverview?.overview ?? null);
-  const [orders, setOrders] = useState<AdminOrder[]>(() => cachedAdminOverview?.orders ?? []);
-  const [offers, setOffers] = useState<Offer[]>(() => cachedAdminOverview?.offers ?? []);
   const [returns, setReturns] = useState<StoreReturn[]>(() => cachedAdminOverview?.returns ?? []);
   const [returnNote, setReturnNote] = useState("");
   const [error, setError] = useState("");
@@ -705,8 +610,6 @@ export function AdminOverview() {
         setError("");
         setLoading(false);
         loadAdminOverviewDetails().then((details) => {
-          setOrders(details.orders);
-          setOffers(details.offers);
           setReturns(details.returns);
         }).catch((reason: unknown) => {
           setError(reason instanceof ApiError ? reason.message : "Could not load dashboard details");
@@ -727,31 +630,10 @@ export function AdminOverview() {
     return () => document.removeEventListener("visibilitychange", onShow);
   }, []);
 
-  const days = recentDays(8);
-  const revenueByDay = days.map((day) => {
-    const key = dayKey(day);
-    return orders.reduce((sum, order) => {
-      if (order.status === "CANCELLED") return sum;
-      return dayKey(new Date(order.placedAt)) === key ? sum + Number(order.total) : sum;
-    }, 0);
-  });
-  const windowRevenue = revenueByDay.reduce((sum, value) => sum + value, 0);
-  const windowOrders = orders.filter((order) => order.status !== "CANCELLED" && days.some((day) => dayKey(day) === dayKey(new Date(order.placedAt)))).length;
-  const average = windowOrders > 0 ? windowRevenue / windowOrders : 0;
-  const delivered = overview?.ordersByStatus.DELIVERED ?? 0;
   const pendingDelivery = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED"].reduce(
     (sum, status) => sum + (overview?.ordersByStatus[status] ?? 0),
     0,
   );
-  const sold = new Map<string, number>();
-  for (const order of orders) {
-    if (order.status === "CANCELLED") continue;
-    for (const item of order.items) {
-      sold.set(item.productName, (sold.get(item.productName) ?? 0) + item.quantity);
-    }
-  }
-  const top = [...sold.entries()].sort((left, right) => right[1] - left[1]).slice(0, 4);
-  const swatches = ["bg-[#35242b] text-[#f0c0cf]", "bg-[#263434] text-[#a4d7ca]", "bg-[#353025] text-[#e4cd9d]", "bg-[#28313d] text-[#b8cbe5]"];
   const overviewDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   if (loading) return <RowsSkeleton rows={8} columns={2} />;
@@ -791,17 +673,22 @@ export function AdminOverview() {
       </section>
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-700 border-l-2 border-l-emerald-500 bg-[#171c24] p-5">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">Product management</h2>
-          <p className="mt-1 text-xs text-slate-400">Add products or manage stock, edit details, and remove listings.</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">Common task</p>
+          <h2 className="mt-1 text-sm font-semibold text-slate-100">Add or update a product</h2>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-400">Add the product details first, then set its stock options and upload photos. For clothing and shoes, choose Apparel sizes and add a size, fabric and stock for each combination.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/admin/products" className="inline-flex items-center gap-2 rounded-xl border border-slate-600 bg-[#202630] px-4 py-2.5 text-sm font-medium text-slate-200 transition-colors hover:border-emerald-700 hover:text-emerald-200">
             <Icon d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8" />
-            Manage products
+            Product list
           </Link>
           <Link to="/admin/products/new" className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
             <Icon d="M12 5v14m-7-7h14" />
-            Add product
+            Start adding product
+          </Link>
+          <Link to="/admin/catalog" className="inline-flex items-center gap-2 rounded-xl border border-slate-600 bg-[#202630] px-4 py-2.5 text-sm font-medium text-slate-200 transition-colors hover:border-cyan-700 hover:text-cyan-200">
+            <Icon d="M4 6h16v12H4z" />
+            Brands & sizes
           </Link>
         </div>
       </section>
@@ -823,10 +710,12 @@ export function AdminOverview() {
           <Link to="/admin/returns" className="rounded-lg border border-orange-700/50 bg-orange-950/25 px-3 py-1.5 text-xs font-semibold text-orange-200 transition-colors duration-200 hover:border-orange-500 hover:bg-orange-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400">All returns</Link>
         </div>
         <div className="p-5">
-        <label className="block text-xs font-medium text-slate-400">
-          Decision note
-          <input className="mt-1.5 h-11 w-full rounded-xl border-2 border-slate-600 bg-[#171c24] px-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-orange-400" placeholder="Optional note for the next decision" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} />
-        </label>
+        {returns.some((item) => item.status === "REQUESTED") ? (
+          <label className="block text-xs font-medium text-slate-400">
+            Decision note (optional)
+            <input className="mt-1.5 h-11 w-full rounded-xl border-2 border-slate-600 bg-[#171c24] px-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-orange-400" placeholder="Add a note for customers if needed" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} />
+          </label>
+        ) : null}
         {returns.length === 0 ? <p className="mt-5 rounded-xl border border-dashed border-slate-700 bg-[#171c24] px-4 py-6 text-center text-sm text-slate-400">No return requests yet.</p> : null}
         <ul className="mt-4 space-y-2">
           {returns.slice(0, 6).map((item) => (
@@ -848,120 +737,6 @@ export function AdminOverview() {
           ))}
         </ul>
         </div>
-      </section>
-      <section className="grid gap-4 xl:grid-cols-[1.7fr_0.8fr]">
-        <article className="rounded-2xl border border-slate-700 border-t border-t-amber-600 bg-[#202630] p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-xl border border-amber-700/40 bg-amber-950/25 text-amber-200"><Icon d="M3 3v18h18M7 14l4-4 4 3 6-7" /></span>
-              <div>
-                <h2 className="text-sm font-semibold text-slate-100">Sales analytics</h2>
-                <p className="mt-0.5 text-xs text-slate-400">Revenue performance</p>
-              </div>
-            </div>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 bg-[#171c24] px-2.5 py-1 text-xs text-slate-300"><Icon d="M7 3v4m10-4v4M4 9h16M5 5h14v16H5z" />Last 8 days</span>
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-3 border-y border-slate-700 py-4 text-sm">
-            <div className="min-w-0">
-              <p className="text-xs text-slate-400">Revenue</p>
-              <p className="mt-1 truncate text-lg font-semibold text-slate-100">{money(windowRevenue)}</p>
-            </div>
-            <div className="border-x border-slate-700 px-3">
-              <p className="text-xs text-slate-400">Orders</p>
-              <p className="mt-1 text-lg font-semibold text-slate-100">{windowOrders}</p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-slate-400">Average</p>
-              <p className="mt-1 truncate text-lg font-semibold text-slate-100">{money(average)}</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <AreaChart
-              points={revenueByDay}
-              labels={days.map((day) => day.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }))}
-            />
-          </div>
-        </article>
-        <article className="rounded-2xl border border-slate-700 border-t border-t-emerald-700 bg-[#202630] p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-700/40 bg-emerald-950/25 text-emerald-200"><Icon d="M3 7h11v8H3zM14 10h4l3 3v2h-7zM7 18a1.5 1.5 0 1 0 0.01 0M17 18a1.5 1.5 0 1 0 0.01 0" /></span>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-100">Order fulfillment</h2>
-              <p className="mt-0.5 text-xs text-slate-400">Open versus delivered</p>
-            </div>
-          </div>
-          <div className="mt-4 flex justify-center">
-            <StatusRing delivered={delivered} open={pendingDelivery} />
-          </div>
-          <div className="mt-2 space-y-2 text-sm">
-            <p className="flex items-center justify-between text-slate-500">
-              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#c5c9d1]" /> Open orders</span>
-              <span className="font-semibold text-slate-100">{pendingDelivery}</span>
-            </p>
-            <p className="flex items-center justify-between text-slate-500">
-              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-700" /> Delivered</span>
-              <span className="font-semibold text-slate-100">{delivered}</span>
-            </p>
-          </div>
-        </article>
-      </section>
-      <section className="grid gap-4 xl:grid-cols-[1.7fr_0.8fr]">
-        <article className="rounded-2xl border border-slate-700 border-t border-t-emerald-600 bg-[#202630] p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-700/50 bg-emerald-950/25 text-emerald-200"><Icon d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8" /></span>
-              <div>
-                <h2 className="text-sm font-semibold text-slate-100">Top selling products</h2>
-                <p className="mt-0.5 text-xs text-slate-400">Most purchased in recent orders</p>
-              </div>
-            </div>
-            <Link to="/admin/products" className="grid h-9 w-9 place-items-center rounded-lg border border-slate-600 bg-[#171c24] text-slate-300 transition-colors duration-200 hover:border-emerald-600 hover:bg-emerald-950/30 hover:text-emerald-200" aria-label="All products" title="All products">›</Link>
-          </div>
-          {top.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-slate-700 bg-[#171c24] px-4 py-6 text-center text-sm text-slate-400">No sold products yet.</p> : null}
-          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {top.map(([name, quantity], index) => (
-              <div key={name} className="rounded-xl border border-slate-700 bg-[#171c24] p-3 transition-colors duration-200 hover:border-slate-500">
-                <div className={`relative grid h-24 place-items-center rounded-lg border border-white/5 text-lg font-semibold ${swatches[index % swatches.length]}`}>
-                  <span className="absolute top-2 left-2 rounded-md bg-black/20 px-1.5 py-0.5 text-[10px]">#{index + 1}</span>
-                  {name.slice(0, 1)}
-                </div>
-                <p className="mt-3 line-clamp-2 text-sm font-medium text-slate-100">{name}</p>
-                <p className="mt-1 text-xs text-slate-400">{quantity} pcs sold</p>
-              </div>
-            ))}
-          </div>
-        </article>
-        <article className="rounded-2xl border border-slate-700 border-t border-t-amber-500/60 bg-[#202630] p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl border border-amber-700/40 bg-amber-950/25 text-amber-200"><Icon d="M12 3l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" /></span>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-100">Current offers</h2>
-              <p className="mt-0.5 text-xs text-slate-400">Promotion activity</p>
-            </div>
-          </div>
-          {offers.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-slate-700 bg-[#171c24] px-4 py-6 text-center text-sm text-slate-400">No active offers.</p> : null}
-          <ul className="mt-4 space-y-4">
-            {offers.slice(0, 4).map((offer) => {
-              const start = offer.startsAt ? new Date(offer.startsAt).getTime() : Date.now();
-              const end = offer.endsAt ? new Date(offer.endsAt).getTime() : start;
-              const span = Math.max(end - start, 1);
-              const progress = Math.min(100, Math.max(8, ((Date.now() - start) / span) * 100));
-              const label = offer.type === "PERCENTAGE" ? `${Number(offer.value)}% off` : offer.value != null ? money(offer.value) : offer.description;
-              return (
-                <li key={offer.id}>
-                  <div className="flex items-start justify-between gap-3 text-sm">
-                    <p className="font-medium text-slate-100">{offer.name}</p>
-                    <p className="shrink-0 rounded-md border border-slate-700 bg-[#171c24] px-2 py-0.5 text-[10px] text-slate-400">{offer.endsAt ? `Ends ${when(offer.endsAt)}` : "Active"}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-amber-200">{label}</p>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-700">
-                    <div className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-300" style={{ width: `${progress}%` }} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </article>
       </section>
     </div>
   );
@@ -1131,9 +906,9 @@ export function AdminOrders() {
       </section>
       {meta && meta.totalPages > 1 ? (
         <div className="flex items-center justify-end gap-2">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Previous</button>
+          <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Previous</button>
           <span className="rounded-lg border border-slate-700 bg-[#171c24] px-3 py-1.5 text-xs text-slate-300">Page {page} of {meta.totalPages}</span>
-          <button type="button" disabled={page >= meta.totalPages} onClick={() => setPage((current) => current + 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Next</button>
+          <button type="button" disabled={page >= meta.totalPages} onClick={() => setPage(page + 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Next</button>
         </div>
       ) : null}
     </div>
@@ -1470,16 +1245,21 @@ type AdminProduct = ProductCardData & {
   variants?: { stock: number }[];
 };
 
+const adminProductPageCache = new Map<string, { items: AdminProduct[]; meta: PageMeta }>();
+
 export function AdminProducts() {
   const { user } = useAuth();
   const canDeleteProducts = user?.adminRole === "SUPER_ADMIN";
-  const [params] = useSearchParams();
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
   const search = params.get("search") ?? "";
-  const [page, setPage] = useState(1);
-  const [items, setItems] = useState<AdminProduct[]>([]);
-  const [meta, setMeta] = useState<PageMeta | null>(null);
+  const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
+  const pageCacheKey = `${search}\u0000${page}`;
+  const cachedPage = adminProductPageCache.get(pageCacheKey);
+  const [items, setItems] = useState<AdminProduct[]>(() => cachedPage?.items ?? []);
+  const [meta, setMeta] = useState<PageMeta | null>(() => cachedPage?.meta ?? null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !cachedPage);
   const [stockProduct, setStockProduct] = useState<ProductDetail | null>(null);
   const [selectedStockVariantId, setSelectedStockVariantId] = useState("");
   const [stockToAdd, setStockToAdd] = useState("");
@@ -1487,20 +1267,34 @@ export function AdminProducts() {
   const [stockError, setStockError] = useState("");
   const [stockNote, setStockNote] = useState("");
 
+  const previousSearch = useRef(search);
   useEffect(() => {
-    setPage(1);
-  }, [search]);
+    if (previousSearch.current === search) return;
+    previousSearch.current = search;
+    const next = new URLSearchParams(params);
+    next.delete("page");
+    setParams(next, { replace: true, preventScrollReset: true });
+  }, [params, search, setParams]);
+
+  function setPage(nextPage: number) {
+    const next = new URLSearchParams(params);
+    if (nextPage <= 1) next.delete("page");
+    else next.set("page", String(nextPage));
+    setParams(next, { preventScrollReset: true });
+  }
 
   useEffect(() => {
     let active = true;
     const loadProducts = () => {
-      setLoading(true);
+      setLoading(!adminProductPageCache.has(pageCacheKey));
       setError("");
       api
         .products({ page, limit: 12, sort: "latest", search: search || undefined })
         .then((result) => {
           if (!active) return;
-          setItems(result.items as AdminProduct[]);
+          const nextItems = result.items as AdminProduct[];
+          adminProductPageCache.set(pageCacheKey, { items: nextItems, meta: result.meta });
+          setItems(nextItems);
           setMeta(result.meta);
         })
         .catch((reason) => {
@@ -1518,7 +1312,7 @@ export function AdminProducts() {
       window.removeEventListener("app:products-changed", loadProducts);
       window.removeEventListener("app:variant-changed", loadProducts);
     };
-  }, [page, search]);
+  }, [page, pageCacheKey, search]);
 
   const visibleStock = items.reduce((sum, product) => sum + (product.variants ?? []).reduce((variantSum, variant) => variantSum + variant.stock, 0), 0);
   const lowStockProducts = items.filter((product) => {
@@ -1646,7 +1440,7 @@ export function AdminProducts() {
             <p className="mt-0.5 text-xs text-slate-400">{search ? `Results for “${search}”` : meta ? `${meta.total} products in your catalog` : loading ? <SkeletonBlock className="h-3.5 w-28" /> : "Manage your product range"}</p>
           </div>
         </div>
-        <Link to="/admin/products/new" className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-emerald-600 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
+        <Link to={`/admin/products/new${location.search}`} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-emerald-600 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
           <Icon d="M12 5v14m-7-7h14" />
           Add product
         </Link>
@@ -1710,7 +1504,7 @@ export function AdminProducts() {
                           Add stock
                         </button>
                         <Link
-                          to={`/admin/products/${product.id}/edit`}
+                          to={`/admin/products/${product.id}/edit${location.search}`}
                           className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-600 bg-[#202630] px-3 text-sm font-medium text-slate-300 transition-colors duration-200 hover:border-emerald-700 hover:bg-emerald-950/40 hover:text-emerald-200"
                         >
                           <Icon d="m15 5 4 4M4 20l4.5-1 10.2-10.2a2.1 2.1 0 0 0-3-3L5.5 16 4 20z" />
@@ -1749,9 +1543,9 @@ export function AdminProducts() {
       </section>
       {meta && meta.totalPages > 1 ? (
         <div className="flex items-center justify-end gap-2">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Previous</button>
+          <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Previous</button>
           <span className="rounded-lg border border-slate-700 bg-[#171c24] px-3 py-1.5 text-xs text-slate-300">Page {page} of {meta.totalPages}</span>
-          <button type="button" disabled={page >= meta.totalPages} onClick={() => setPage((current) => current + 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Next</button>
+          <button type="button" disabled={page >= meta.totalPages} onClick={() => setPage(page + 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Next</button>
         </div>
       ) : null}
       {stockProduct ? (

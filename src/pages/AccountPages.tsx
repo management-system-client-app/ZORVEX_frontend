@@ -74,6 +74,7 @@ function StandaloneAuthLayout({
       <div className="login-content">
         <aside className="login-promo">
           <div className="login-promo-brand"><BrandLogo compact /></div>
+          <img className="login-promo-image" src="/login-marketplace.svg" alt="" aria-hidden="true" />
           <div className="login-promo-copy">
             <span className="login-promo-kicker">YOUR EVERYDAY MARKETPLACE</span>
             <h2>Good choices.<br />Great everyday finds.</h2>

@@ -416,11 +416,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           console.warn("Store settings could not be refreshed", settingsResult.reason);
         }
         if (catalogResult.status === "fulfilled") {
-          setCatalog(catalogResult.value);
-          writeStoreCache(CATALOG_CACHE_KEY, catalogResult.value);
+          const nextCatalog = categoriesResult.status === "fulfilled"
+            ? { ...catalogResult.value, categories: categoriesResult.value }
+            : catalogResult.value;
+          setCatalog(nextCatalog);
+          writeStoreCache(CATALOG_CACHE_KEY, nextCatalog);
         }
         else console.warn("Store catalog could not be refreshed", catalogResult.reason);
         if (categoriesResult.status === "fulfilled") {
+          setCatalog((current) => current.categories === categoriesResult.value
+            ? current
+            : { ...current, categories: categoriesResult.value });
           setCategoryImages(new Map(categoriesResult.value.map((item) => [item.id, item.imageUrl ?? null])));
           writeStoreCache(CATEGORIES_CACHE_KEY, categoriesResult.value);
         } else {

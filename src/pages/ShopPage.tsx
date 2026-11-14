@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { api, DATA_REFRESH_INTERVAL, hydrateImages } from "../api";
 import { ProductGrid } from "../components/ProductCard";
@@ -31,13 +31,15 @@ export function ShopPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [sheet, setSheet] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const [availableFabricIds, setAvailableFabricIds] = useState<Set<string> | null>(null);
   const [minPrice, setMinPrice] = useState(params.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(params.get("maxPrice") ?? "");
 
   const query = useMemo(
     () => ({
       page: params.get("page") ?? "1",
-      limit: "20",
+      limit: "40",
       status: "ACTIVE",
       sort: params.get("sort") ?? "latest",
       search: params.get("search") ?? undefined,
@@ -53,6 +55,52 @@ export function ShopPage() {
     }),
     [params, defaultGender],
   );
+
+  const fabricIdsKey = catalog.fabrics.map((fabric) => fabric.id).join("|");
+  useEffect(() => {
+    const fabricIds = catalog.fabrics.map((fabric) => fabric.id);
+    setAvailableFabricIds(null);
+    if (fabricIds.length === 0) {
+      setAvailableFabricIds(new Set());
+      return;
+    }
+    let active = true;
+    const refreshFabricAvailability = async () => {
+      try {
+        const firstPage = await api.variantsPage({ page: 1, limit: 100, isActive: true });
+        const variantPages = firstPage.meta.totalPages > 1
+          ? await Promise.all(Array.from({ length: firstPage.meta.totalPages - 1 }, (_, index) =>
+              api.variantsPage({ page: index + 2, limit: 100, isActive: true }),
+            ))
+          : [];
+        const activeFabricIds = new Set(
+          [firstPage.items, ...variantPages.map((page) => page.items)]
+            .flat()
+            .map((variant) => variant.fabricId)
+            .filter((fabricId): fabricId is string => typeof fabricId === "string" && fabricIds.includes(fabricId)),
+        );
+        const results = await Promise.all([...activeFabricIds].map(async (fabricId) => {
+          try {
+            const result = await api.products({ page: 1, limit: 1, status: "ACTIVE", fabricId });
+            return { fabricId, hasProducts: result.meta.total > 0 };
+          } catch {
+            return { fabricId, hasProducts: true };
+          }
+        }));
+        if (active) setAvailableFabricIds(new Set(results.filter((result) => result.hasProducts).map((result) => result.fabricId)));
+      } catch {
+        if (active) setAvailableFabricIds(null);
+      }
+    };
+    void refreshFabricAvailability();
+    window.addEventListener("app:products-changed", refreshFabricAvailability);
+    window.addEventListener("app:variant-changed", refreshFabricAvailability);
+    return () => {
+      active = false;
+      window.removeEventListener("app:products-changed", refreshFabricAvailability);
+      window.removeEventListener("app:variant-changed", refreshFabricAvailability);
+    };
+  }, [fabricIdsKey]);
 
   useEffect(() => {
     let active = true;
@@ -167,6 +215,11 @@ export function ShopPage() {
     else next.set(key, value);
     if (key !== "page") next.delete("page");
     setParams(next, { preventScrollReset: true });
+    if (key === "page") {
+      window.requestAnimationFrame(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   }
 
   function applyPrice(event: FormEvent) {
@@ -186,9 +239,13 @@ export function ShopPage() {
   const crumb = category?.name ?? gender?.label ?? (params.get("search") ? `Search: ${params.get("search")}` : "Shop");
   const activeFilterCount = ["categoryId", "brandId", "gender", "sizeId", "colorId", "fabricId", "minPrice", "maxPrice", "inStock"]
     .filter((key) => params.has(key)).length;
+  const fabricsWithProducts = availableFabricIds
+    ? catalog.fabrics.filter((fabric) => availableFabricIds.has(fabric.id))
+    : catalog.fabrics;
 
   const filterProps = {
     catalog,
+    fabricsWithProducts,
     colors,
     params,
     defaultGender,
@@ -224,7 +281,7 @@ export function ShopPage() {
         <aside className="filters">
           <Filters {...filterProps} />
         </aside>
-        <div className="shop-results">
+        <div className="shop-results" ref={resultsRef}>
           <div className="shop-bar">
             <button type="button" className="btn-line filter-toggle" onClick={() => setSheet(true)}>
               Filters{activeFilterCount > 0 ? <span>{activeFilterCount}</span> : null}
@@ -285,6 +342,7 @@ export function ShopPage() {
 
 function Filters({
   catalog,
+  fabricsWithProducts,
   colors,
   params,
   defaultGender,
@@ -297,6 +355,7 @@ function Filters({
   clear,
 }: {
   catalog: ReturnType<typeof useStore>["catalog"];
+  fabricsWithProducts: ReturnType<typeof useStore>["catalog"]["fabrics"];
   colors: Color[];
   params: URLSearchParams;
   defaultGender?: string;
@@ -377,12 +436,14 @@ function Filters({
         </div>
         {selected("colorId") ? <p className="selected-color-name">Selected: {colors.find((color) => color.id === selected("colorId"))?.name}</p> : null}
       </div>
-      <FilterList
-        title="Fabric"
-        options={catalog.fabrics.map((item) => ({ id: item.id, label: item.name }))}
-        selected={selected("fabricId")}
-        onPick={(id) => setParam("fabricId", id)}
-      />
+      {fabricsWithProducts.length > 0 ? (
+        <FilterList
+          title="Fabric"
+          options={fabricsWithProducts.map((item) => ({ id: item.id, label: item.name }))}
+          selected={selected("fabricId")}
+          onPick={(id) => setParam("fabricId", id)}
+        />
+      ) : null}
       <form className="filter-block" onSubmit={applyPrice}>
         <h3>Price</h3>
         <div className="price-row">

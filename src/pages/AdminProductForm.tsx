@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../api";
 import { ensureStandardFabrics } from "../catalogOptions";
 import { DetailSkeleton } from "../components/Skeleton";
@@ -11,6 +11,10 @@ type SizeRow = { sizeId: string; fabricId: string; colorId: string; stock: strin
 type GeneralVariantRow = { optionLabel: string; sku: string; stock: string; fabricId: string };
 const MAX_PRODUCT_IMAGES = 6;
 const PRODUCT_IMAGE_ACCEPT = "image/avif,image/jpeg,image/png,image/webp,.avif,.jpg,.jpeg,.png,.webp";
+
+function isFootwearCategory(category?: { slug: string; name: string }) {
+  return category ? /shoe|footwear|sneaker|boot|sandal/.test(`${category.slug} ${category.name}`.toLowerCase()) : false;
+}
 
 const fieldClass =
   "h-11 w-full rounded-xl border border-slate-600 bg-[#171c24] px-3 text-sm text-white outline-none transition-all duration-200 ease-out placeholder:text-slate-500 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20";
@@ -92,6 +96,7 @@ export function AdminProductForm() {
   const { id } = useParams();
   const editing = Boolean(id);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { catalog } = useStore();
   const canManageStaffCommission = user?.adminRole === "SUPER_ADMIN";
@@ -110,7 +115,10 @@ export function AdminProductForm() {
   const [generalVariants, setGeneralVariants] = useState<GeneralVariantRow[]>([
     { optionLabel: "", sku: "", stock: "0", fabricId: "" },
   ]);
+  const [sizeOptions, setSizeOptions] = useState(catalog.sizes);
+  const [addingShoeSizes, setAddingShoeSizes] = useState(false);
   const [rows, setRows] = useState<SizeRow[]>([]);
+  const [existingVariantKeys, setExistingVariantKeys] = useState<string[]>([]);
   const [selectedSizeIds, setSelectedSizeIds] = useState<string[]>([]);
   const [selectedColorIds, setSelectedColorIds] = useState<string[]>([]);
   const [bulkFabricId, setBulkFabricId] = useState("");
@@ -127,7 +135,10 @@ export function AdminProductForm() {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(!editing);
   const selectedCategory = catalog.categories.find((category) => category.id === categoryId);
-  const isApparelCategory = selectedCategory && ["men", "women"].includes(selectedCategory.slug);
+  const isShoeCategory = isFootwearCategory(selectedCategory);
+  const isApparelCategory = Boolean(selectedCategory && (["men", "women"].includes(selectedCategory.slug) || isShoeCategory));
+
+  useEffect(() => setSizeOptions(catalog.sizes), [catalog.sizes]);
 
   useEffect(() => () => previewUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
 
@@ -168,9 +179,15 @@ export function AdminProductForm() {
         setBrandId(product.brand.id);
         setCategoryId(product.category.id);
         setExistingImages(product.images);
-        setProductColorIds([
-          ...new Set(product.variants.flatMap((variant) => variant.color ? [variant.color.id] : [])),
-        ]);
+        const colorIds = [...new Set(product.variants.flatMap((variant) => variant.color ? [variant.color.id] : []))];
+        setProductColorIds(colorIds);
+        setSelectedColorIds(colorIds);
+        setExistingVariantKeys(product.variants.flatMap((variant) =>
+          variant.size && variant.fabric
+            ? [`${variant.size.id}:${variant.fabric.id}:${variant.color?.id ?? ""}`]
+            : [],
+        ));
+        if (product.variants.some((variant) => variant.size)) setInventoryMode("apparel");
         setReady(true);
       })
       .catch((reason) => {
@@ -250,11 +267,12 @@ export function AdminProductForm() {
     }
 
     const colorIds = selectedColorIds.length > 0 ? selectedColorIds : [""];
-    const existing = new Set(
+    const existing = new Set([
+      ...existingVariantKeys,
       rows
         .filter((row) => row.sizeId && row.fabricId)
         .map((row) => `${row.sizeId}:${row.fabricId}:${row.colorId}`),
-    );
+    ]);
     const additions: SizeRow[] = [];
     for (const sizeId of selectedSizeIds) {
       for (const colorId of colorIds) {
@@ -280,6 +298,32 @@ export function AdminProductForm() {
 
   function toggleSelection(selection: string[], value: string, update: (next: string[]) => void) {
     update(selection.includes(value) ? selection.filter((item) => item !== value) : [...selection, value]);
+  }
+
+  async function addShoeSizes() {
+    setAddingShoeSizes(true);
+    setError("");
+    try {
+      const latestSizes = await api.sizes({ fresh: true });
+      const knownNames = new Set(latestSizes.map((size) => size.name.trim().toLowerCase()));
+      for (let value = 36; value <= 46; value += 1) {
+        const name = String(value);
+        if (knownNames.has(name.toLowerCase())) continue;
+        try {
+          const created = await api.createSize({ name });
+          latestSizes.push(created);
+          knownNames.add(name.toLowerCase());
+        } catch (reason) {
+          if (!(reason instanceof ApiError && reason.status === 409)) throw reason;
+        }
+      }
+      const refreshedSizes = await api.sizes({ fresh: true });
+      setSizeOptions(refreshedSizes);
+    } catch (reason) {
+      setError(messageOf(reason, "Could not add shoe sizes"));
+    } finally {
+      setAddingShoeSizes(false);
+    }
   }
 
   async function onSubmit(event: FormEvent) {
@@ -331,7 +375,30 @@ export function AdminProductForm() {
           brandId,
           categoryId,
         }, images, imageColorIds);
-        navigate("/admin/products");
+        for (const row of rows) {
+          const size = sizeOptions.find((item) => item.id === row.sizeId);
+          const color = colors.find((item) => item.id === row.colorId);
+          const skuParts = [productSlug, size?.slug, color?.name]
+            .filter(Boolean)
+            .join("-")
+            .toUpperCase()
+            .replace(/[^A-Z0-9-]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 48);
+          const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
+          await api.saveVariant({
+            productId: id,
+            sizeId: row.sizeId,
+            fabricId: row.fabricId,
+            ...(row.colorId ? { colorId: row.colorId } : {}),
+            sku: `${skuParts || "ITEM"}-${suffix}`,
+            stock: Number(row.stock) || 0,
+          });
+          const key = `${row.sizeId}:${row.fabricId}:${row.colorId}`;
+          setExistingVariantKeys((current) => current.includes(key) ? current : [...current, key]);
+          setRows((current) => current.filter((item) => `${item.sizeId}:${item.fabricId}:${item.colorId}` !== key));
+        }
+        navigate(`/admin/products${location.search}`);
         return;
       }
 
@@ -377,7 +444,7 @@ export function AdminProductForm() {
         images,
         imageColorIds,
       );
-      navigate("/admin/products");
+      navigate(`/admin/products${location.search}`);
     } catch (reason) {
       setError(messageOf(reason, "Could not save the product"));
     } finally {
@@ -414,6 +481,16 @@ export function AdminProductForm() {
         </div>
       </header>
       {error ? <p className="rounded-xl border border-rose-800/60 bg-rose-950/30 px-4 py-3 text-sm text-rose-200" role="alert">{error}</p> : null}
+      {!editing ? (
+        <section className="rounded-xl border border-sky-800/50 bg-sky-950/20 px-4 py-3.5" aria-label="Product entry guide">
+          <h2 className="text-xs font-semibold text-sky-200">Quick guide · add a product</h2>
+          <ol className="mt-2 grid gap-1.5 text-[11px] leading-relaxed text-slate-300 sm:grid-cols-3 sm:gap-3">
+            <li><strong className="text-slate-100">1. Details:</strong> enter name, price, category and brand.</li>
+            <li><strong className="text-slate-100">2. Stock:</strong> choose options. For clothes or shoes, add sizes, fabric and stock combinations.</li>
+            <li><strong className="text-slate-100">3. Photos:</strong> upload clear product photos, then save.</li>
+          </ol>
+        </section>
+      ) : null}
       <section className="overflow-hidden rounded-2xl border border-slate-700 border-t-2 border-t-emerald-600 bg-[#202630] shadow-sm">
         <div className="border-b border-slate-700 px-5 py-4">
           <div className="flex items-center gap-2">
@@ -470,7 +547,7 @@ export function AdminProductForm() {
             onChange={(event) => {
               const nextCategory = catalog.categories.find((category) => category.id === event.target.value);
               setCategoryId(event.target.value);
-              const isApparel = nextCategory && ["men", "women"].includes(nextCategory.slug);
+              const isApparel = nextCategory && (["men", "women"].includes(nextCategory.slug) || isFootwearCategory(nextCategory));
               setInventoryMode(isApparel ? "apparel" : "general");
               setGender(nextCategory?.slug === "men" ? "MEN" : nextCategory?.slug === "women" ? "WOMEN" : "UNISEX");
             }}
@@ -516,7 +593,6 @@ export function AdminProductForm() {
         </div>
       </section>
 
-      {editing ? null : (
         <section className="overflow-hidden rounded-2xl border border-slate-700 border-t-2 border-t-amber-600 bg-[#202630] shadow-sm">
           <div className="border-b border-slate-700 px-5 py-4">
             <div>
@@ -524,7 +600,7 @@ export function AdminProductForm() {
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-700 text-xs font-bold text-white">B</span>
                 <h2 className="text-sm font-semibold text-slate-100">Variants & inventory</h2>
               </div>
-              <p className="mt-1.5 pl-10 text-xs text-slate-400">Choose sizes and colors, then set stock for each combination.</p>
+              <p className="mt-1.5 pl-10 text-xs text-slate-400">{isShoeCategory ? "Add EU shoe sizes, choose fabric and color, then set stock for each size." : "Choose sizes and colors, then set stock for each combination."}</p>
             </div>
           </div>
           <div className="space-y-5 p-5">
@@ -582,14 +658,21 @@ export function AdminProductForm() {
               </div>
             </div>
             <div>
-              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Sizes</p>
+              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Sizes</p>
+                {isShoeCategory ? (
+                  <button type="button" disabled={addingShoeSizes} onClick={() => void addShoeSizes()} className="rounded-lg border border-cyan-700/60 px-2.5 py-1.5 text-[11px] font-medium text-cyan-200 transition-colors hover:bg-cyan-950/40 disabled:cursor-wait disabled:opacity-50">
+                    {addingShoeSizes ? "Adding…" : "Add shoe sizes (EU 36–46)"}
+                  </button>
+                ) : null}
+              </div>
               <details className="group relative">
                 <summary className={`${fieldClass} flex cursor-pointer list-none items-center justify-between text-slate-300 [&::-webkit-details-marker]:hidden`}>
                   <span>{selectedSizeIds.length ? `${selectedSizeIds.length} size${selectedSizeIds.length === 1 ? "" : "s"} selected` : "Choose sizes"}</span>
                   <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-180">⌄</span>
                 </summary>
                 <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-600 bg-[#171c24] p-2 shadow-xl">
-                  {catalog.sizes.length > 0 ? catalog.sizes.map((size) => (
+                  {sizeOptions.length > 0 ? sizeOptions.map((size) => (
                     <label key={size.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/60">
                       <input
                         type="checkbox"
@@ -652,7 +735,7 @@ export function AdminProductForm() {
                 Select sizes, colors and fabric above, then add combinations.
               </p>
             ) : rows.map((row, index) => {
-              const sizeName = catalog.sizes.find((size) => size.id === row.sizeId)?.name || "Choose size";
+              const sizeName = sizeOptions.find((size) => size.id === row.sizeId)?.name || "Choose size";
               const color = colors.find((item) => item.id === row.colorId);
               const fabricName = fabrics.find((fabric) => fabric.id === row.fabricId)?.name || "No fabric";
               return (
@@ -693,8 +776,6 @@ export function AdminProductForm() {
           )}
           </div>
         </section>
-
-      )}
 
       {editing && photoColors.length > 0 ? (
         <section className="overflow-hidden rounded-2xl border border-slate-700 border-t-2 border-t-cyan-600 bg-[#202630] shadow-sm">

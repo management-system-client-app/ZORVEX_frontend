@@ -771,6 +771,11 @@ export const api = {
     request<unknown>(`/size-guides/${id}`, { method: "DELETE" }).then((res) => res.data),
   variants: (params: Record<string, string | number | boolean | undefined | null>) =>
     request<VariantRow[]>(`/variants${qs(params)}`).then((res) => res.data),
+  variantsPage: (params: Record<string, string | number | boolean | undefined | null>) =>
+    request<VariantRow[]>(`/variants${qs(params)}`).then((res) => ({
+      items: res.data,
+      meta: res.meta ?? { page: 1, limit: res.data.length, total: res.data.length, totalPages: 1 },
+    })),
   variant: (id: string) => request<VariantRow>(`/variants/${id}`).then((res) => res.data),
   saveVariant: (body: Record<string, unknown>, id?: string) =>
     request<VariantRow>(id ? `/variants/${id}` : "/variants", {

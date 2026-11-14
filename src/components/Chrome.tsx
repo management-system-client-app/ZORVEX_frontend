@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ChevronRight, Gift, Heart, House, LayoutGrid, Mail, MapPin, Menu, Minus, PackageSearch, Phone, Plus, Search, ShoppingBag, Trash2, UserRound, X, Zap } from "lucide-react";
 import { api } from "../api";
@@ -115,6 +115,8 @@ export function Header() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dismissedNavDropdown, setDismissedNavDropdown] = useState<string | null>(null);
+  const [mobileOpenNavDropdown, setMobileOpenNavDropdown] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [wishlistCount, setWishlistCount] = useState(0);
@@ -153,10 +155,21 @@ export function Header() {
     const desktopLayout = window.matchMedia("(min-width: 900px)");
     function resetCategoryMenu() {
       closeCategoryMenu();
+      setDismissedNavDropdown(null);
+      setMobileOpenNavDropdown(null);
     }
     desktopLayout.addEventListener("change", resetCategoryMenu);
     return () => desktopLayout.removeEventListener("change", resetCategoryMenu);
   }, []);
+
+  useEffect(() => {
+    if (!mobileOpenNavDropdown) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpenNavDropdown(null);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpenNavDropdown]);
 
   useEffect(() => {
     const responsiveSearch = window.matchMedia("(max-width: 699px)");
@@ -269,10 +282,13 @@ export function Header() {
     .filter((category) => !category.parentId && category.isActive !== false)
     .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name));
   const navLinks = [
-    { label: "All Products", href: "/shop" },
+    { label: "All Products", href: "/shop", children: [] as Category[] },
     ...topLevelCategories.map((category) => ({
       label: category.name,
       href: `/shop?categoryId=${category.id}`,
+      children: catalog.categories
+        .filter((child) => child.parentId === category.id && child.isActive !== false)
+        .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name)),
     })),
   ];
   const bottomNavOverlayOpen = menuOpen || accountMenuOpen || drawer;
@@ -451,7 +467,37 @@ export function Header() {
                 ? location.pathname === "/"
                 : navClass(item.href, false, location.pathname, location.search);
               const compactHidden = item.label === "Budget Deals" || item.label === "Best Deals";
-              return <Link key={item.label} to={item.href} className={`${item.label === "Home" ? "home-link " : ""}${compactHidden ? "compact-hidden " : ""}${active ? "on" : ""}`} aria-current={active ? "page" : undefined}>{item.label}</Link>;
+              const dismissDropdown = (event: MouseEvent<HTMLAnchorElement>) => {
+                event.currentTarget.blur();
+                setDismissedNavDropdown(item.label);
+              };
+              const handleTopNavClick = (event: MouseEvent<HTMLAnchorElement>) => {
+                if (item.children.length > 0 && window.matchMedia("(max-width: 899px)").matches) {
+                  if (mobileOpenNavDropdown !== item.label) {
+                    event.preventDefault();
+                    event.currentTarget.blur();
+                    setDismissedNavDropdown(null);
+                    setMobileOpenNavDropdown(item.label);
+                    return;
+                  }
+                  setMobileOpenNavDropdown(null);
+                }
+                dismissDropdown(event);
+              };
+              const link = <Link key={item.label} to={item.href} onClick={handleTopNavClick} className={`${item.label === "Home" ? "home-link " : ""}${compactHidden ? "compact-hidden " : ""}${active ? "on" : ""}`} aria-current={active ? "page" : undefined}>{item.label}</Link>;
+              return item.children.length > 0 ? (
+                <div key={item.label} className={`menu-item${mobileOpenNavDropdown === item.label ? " mobile-dropdown-open" : ""}`} onMouseLeave={() => setDismissedNavDropdown(null)}>
+                  {link}
+                  {mobileOpenNavDropdown === item.label ? (
+                    <button type="button" className="mobile-dropdown-backdrop" aria-label="Close subcategories" onClick={() => setMobileOpenNavDropdown(null)} />
+                  ) : null}
+                  {dismissedNavDropdown !== item.label ? (
+                    <div className="dropdown">
+                      {item.children.map((child) => <Link key={child.id} to={`/shop?categoryId=${child.id}`} onClick={dismissDropdown}>{child.name}</Link>)}
+                    </div>
+                  ) : null}
+                </div>
+              ) : link;
             })}
           </nav>
           <div className="category-nav-tools">

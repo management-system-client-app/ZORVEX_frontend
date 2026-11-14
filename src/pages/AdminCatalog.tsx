@@ -57,6 +57,21 @@ function parentName(categories: Category[], parentId: string | null) {
   return categories.find((category) => category.id === parentId)?.name ?? "—";
 }
 
+function categoryDescendants(categories: Category[], categoryId: string) {
+  const descendants = new Set([categoryId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const category of categories) {
+      if (category.parentId && descendants.has(category.parentId) && !descendants.has(category.id)) {
+        descendants.add(category.id);
+        changed = true;
+      }
+    }
+  }
+  return descendants;
+}
+
 function hasAvailableStock(product: ProductCardData) {
   return product.variants?.some((variant) => variant.stock - (variant.reserved ?? 0) > 0) ?? false;
 }
@@ -157,6 +172,7 @@ export function AdminCategories() {
 
   const activeCount = categories.filter((category) => category.isActive !== false).length;
   const hiddenCount = categories.length - activeCount;
+  const unavailableParents = editing ? categoryDescendants(categories, editing) : new Set<string>();
 
   return (
     <div className="space-y-5">
@@ -191,11 +207,11 @@ export function AdminCategories() {
           <input className={`${categoryFieldClass} mt-1`} required minLength={2} value={name} onChange={(event) => setName(event.target.value)} />
         </label>
         <label className="block text-xs text-slate-300">
-          Parent
+          Parent category
           <select className={`${categoryFieldClass} mt-1`} value={parentId} onChange={(event) => setParentId(event.target.value)}>
-            <option value="">None</option>
+            <option value="">None — top-level category</option>
             {categories
-              .filter((category) => category.id !== editing)
+              .filter((category) => !unavailableParents.has(category.id))
               .map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -203,6 +219,7 @@ export function AdminCategories() {
                 </option>
               ))}
           </select>
+          <span className="mt-1 block text-[11px] leading-relaxed text-slate-500">Leave this as “None” for a main category. Choose a parent to make this a subcategory.</span>
         </label>
         <label className="block text-xs text-slate-300">
           Description
