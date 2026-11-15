@@ -342,9 +342,9 @@ h1, h2, h3, p { margin: 0; }
 }
 .brand-logo.is-compact .brand-logo-image { width: 140px; }
 .store-shell.theme-dark .brand-logo-image {
-  padding: 3px 5px;
-  border-radius: 8px;
-  background: #fff;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .brand-logo-copy {
   display: grid;
@@ -2813,7 +2813,6 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
     flex-wrap: wrap;
   }
 }
-
 @media (max-width: 599px) {
   .store-shell .page-container,
   .store-shell .home {
@@ -2970,14 +2969,6 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 
   .store-shell .footer-contact {
     grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 599px) {
-  .store-shell.theme-dark .brand-logo-image {
-    padding: 0;
-    background: transparent;
-    border-radius: 0;
   }
 }
 
@@ -3961,7 +3952,17 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 }
 .register-photo-picker > svg { flex: none; }
 .register-photo-picker > span { overflow: hidden; color: #4b5e70; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.register-photo-picker input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.register-photo-picker input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .register-photo-picker:focus-within { outline: 2px solid #2864a8; outline-offset: 2px; }
 .login-submit {
   display: flex;
@@ -4537,7 +4538,18 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 .store-shell .account-profile-photo { display: grid; align-content: start; justify-items: center; gap: 14px; }
 .store-shell .account-profile-photo .user-face { border: 3px solid #d9e3e9; }
 .store-shell .account-photo-upload { position: relative; display: inline-flex; align-items: center; gap: 6px; color: #2864a8; font-size: 12px; font-weight: 650; cursor: pointer; }
-.store-shell .account-photo-upload input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.store-shell .account-photo-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.store-shell .account-photo-upload:focus-within { outline: 2px solid #2864a8; outline-offset: 3px; }
 .store-shell .account-profile-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 12px; margin: 0; padding-top: 8px; }
 .store-shell .account-profile-details > div { display: grid; min-width: 0; gap: 5px; }
 .store-shell .account-profile-details dt { display: flex; align-items: center; gap: 6px; color: #7b8993; font-size: 11px; }
@@ -13885,4 +13897,119 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
     margin: 7px 0;
   }
   .store-shell .footer-bottom { padding-top: 12px; }
+}
+@media (max-width: 899px) {
+  .store-shell .footer-socials {
+    display: grid !important;
+    grid-template-columns: repeat(4, 36px);
+    grid-auto-flow: row;
+    justify-items: center;
+    width: max-content;
+    max-width: 100%;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .store-shell .footer-social-item { width: 36px; min-width: 36px; }
+  .store-shell .footer-social-item:last-child { grid-row: 1; }
+  .store-shell .footer-social-item {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    min-height: 36px;
+  }
+  .store-shell .footer .footer-social-icon {
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+    transform: none;
+  }
+  .store-shell .footer-social-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+}
+.store-shell .footer-socials {
+  display: grid !important;
+  grid-template-columns: repeat(4, 36px);
+  grid-auto-flow: row;
+  width: max-content;
+  max-width: 100%;
+  gap: 12px;
+}
+.store-shell .footer-social-item { width: 36px; min-width: 36px; }
+.store-shell .footer-social-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+.store-shell .footer-socials {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  width: max-content;
+  max-width: 100%;
+  gap: 12px;
+}
+.store-shell .footer-social-item {
+  display: flex;
+  width: auto;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  gap: 9px;
+}
+.store-shell .footer-social-name {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  clip-path: none;
+}
+.store-shell .header-account-wrap {
+  flex: 0 0 auto;
+}
+.store-shell .header-tools .header-account-profile {
+  width: 40px;
+  min-width: 40px;
+  flex: 0 0 40px;
+  justify-content: center;
+  gap: 0;
+}
+.store-shell .header-account-profile-copy { display: none; }
+.store-shell .header-promo-links .budget-finds-icon {
+  box-sizing: content-box;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  filter: none;
+}
+.store-shell.theme-light .header-promo-links .budget-finds-icon {
+  background: transparent;
+  filter: none;
+}
+.user-face-default {
+  border-color: transparent;
+  background: linear-gradient(145deg, #2864a8, #39a4b6);
+  color: #fff;
+}
+.store-shell .header-account-profile .user-face-default {
+  border-color: #b9d1e3;
+  background: linear-gradient(145deg, #2864a8, #39a4b6);
+  color: #fff;
 }

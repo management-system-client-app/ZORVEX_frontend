@@ -1155,7 +1155,22 @@ export function AdminSettings() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [avatarSaving, setAvatarSaving] = useState(false);
+  const [noticeTitle, setNoticeTitle] = useState("RESELLKORI UPDATE");
+  const [noticeBody, setNoticeBody] = useState("নতুন পণ্য, দারুণ অফার আর সারা দেশের পছন্দের কালেকশন—সব এক জায়গায়।");
+  const [noticeSaving, setNoticeSaving] = useState(false);
+  const [noticeStatus, setNoticeStatus] = useState("");
   useEffect(() => setForm(settings), [settings]);
+  useEffect(() => {
+    let active = true;
+    api.page("home-store-notice")
+      .then((page) => {
+        if (!active) return;
+        setNoticeTitle(page.title || "RESELLKORI UPDATE");
+        setNoticeBody(page.body ?? "নতুন পণ্য, দারুণ অফার আর সারা দেশের পছন্দের কালেকশন—সব এক জায়গায়।");
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   if (!settingsReady) return <RowsSkeleton rows={8} />;
 
@@ -1235,6 +1250,26 @@ export function AdminSettings() {
               </div>
             </form>
             <aside className="space-y-5">
+              <form className="overflow-hidden rounded-2xl border border-slate-700 border-t-2 border-t-cyan-500 bg-[#202630] shadow-sm" onSubmit={async (event) => {
+                event.preventDefault();
+                setNoticeStatus("");
+                setNoticeSaving(true);
+                try {
+                  await api.savePage("home-store-notice", { title: noticeTitle, body: noticeBody, isActive: true });
+                  setNoticeStatus("Homepage notice saved");
+                } catch (reason) {
+                  setNoticeStatus(messageOf(reason, "Could not save homepage notice"));
+                } finally {
+                  setNoticeSaving(false);
+                }
+              }}>
+                <div className="flex items-center gap-3 border-b border-slate-700 px-5 py-4"><span className="grid h-9 w-9 place-items-center rounded-xl border border-cyan-800/50 bg-cyan-950/25 text-cyan-200"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h8M8 17h5" strokeLinecap="round" strokeLinejoin="round" /></svg></span><div><h2 className="text-sm font-semibold text-slate-100">Homepage notice</h2><p className="text-xs text-slate-400">Edit the message shown below the homepage hero</p></div></div>
+                <div className="space-y-3 p-5">
+                  <label className="block text-xs font-medium text-slate-300">Heading<input required className="mt-1.5 h-10 w-full rounded-xl border-2 border-slate-600 bg-[#171c24] px-3 text-sm text-white outline-none focus:border-cyan-400" value={noticeTitle} onChange={(event) => setNoticeTitle(event.target.value)} /></label>
+                  <label className="block text-xs font-medium text-slate-300">Message<textarea required rows={3} className="mt-1.5 w-full rounded-xl border-2 border-slate-600 bg-[#171c24] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400" value={noticeBody} onChange={(event) => setNoticeBody(event.target.value)} /></label>
+                  <div className="flex flex-wrap items-center justify-between gap-3"><p className={`text-xs ${noticeStatus === "Homepage notice saved" ? "text-emerald-300" : "text-rose-300"}`} role="status">{noticeStatus}</p><button type="submit" disabled={noticeSaving} className="rounded-xl bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-600 disabled:cursor-wait disabled:opacity-50">{noticeSaving ? "Saving…" : "Save notice"}</button></div>
+                </div>
+              </form>
               <section className="overflow-hidden rounded-2xl border border-slate-700 border-t-2 border-t-amber-500 bg-[#202630] shadow-sm">
                 <div className="flex items-center gap-3 border-b border-slate-700 px-5 py-4"><span className="grid h-9 w-9 place-items-center rounded-xl border border-amber-800/50 bg-amber-950/25 text-amber-200"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" strokeLinecap="round" /></svg></span><div><h2 className="text-sm font-semibold text-slate-100">Admin profile</h2><p className="text-xs text-slate-400">Your account and profile photo</p></div></div>
                 <div className="p-5">

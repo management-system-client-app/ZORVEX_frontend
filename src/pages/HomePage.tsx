@@ -28,6 +28,8 @@ const HOME_CACHE_KEY = "store_home_payload_v2";
 const LATEST_PRODUCTS_CACHE_KEY = "store_latest_products";
 const DAILY_DEALS_CACHE_KEY = "store_daily_deals";
 const BEST_SELLERS_CACHE_KEY = "store_best_sellers";
+const DEFAULT_STORE_NOTICE_TITLE = "RESELLKORI UPDATE";
+const DEFAULT_STORE_NOTICE_BODY = "নতুন পণ্য, দারুণ অফার আর সারা দেশের পছন্দের কালেকশন—সব এক জায়গায়।";
 
 function isProductList(value: unknown): value is ProductCardData[] {
   return (
@@ -177,6 +179,7 @@ function HomeSkeleton() {
 
 export function HomePage() {
   const { catalog, categoryImages } = useStore();
+  const [storeNotice, setStoreNotice] = useState({ title: DEFAULT_STORE_NOTICE_TITLE, body: DEFAULT_STORE_NOTICE_BODY });
   const [initialHome] = useState(readCachedHome);
   const [banners, setBanners] = useState<HomeBlock[]>(() => initialHome?.banners.filter((banner) => banner.imageUrl) ?? []);
   const [campaigns, setCampaigns] = useState<HomeBlock[]>(() =>
@@ -209,6 +212,16 @@ export function HomePage() {
   const skeletonRef = useRef<HTMLDivElement>(null);
   const [reservedHeight, setReservedHeight] = useState(0);
   const isLoading = loading;
+
+  useEffect(() => {
+    let active = true;
+    api.page("home-store-notice")
+      .then((page) => {
+        if (active) setStoreNotice({ title: page.title || DEFAULT_STORE_NOTICE_TITLE, body: page.body ?? DEFAULT_STORE_NOTICE_BODY });
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   function updateDailyDeals(products: ProductCardData[]) {
     if (products.length === 0) {
@@ -460,8 +473,8 @@ export function HomePage() {
       </section>
 
       <div className="home-store-notice">
-        <span>RESELLKORI UPDATE</span>
-        <p>নতুন পণ্য, দারুণ অফার আর সারা দেশের পছন্দের কালেকশন—সব এক জায়গায়।</p>
+        <span>{storeNotice.title}</span>
+        <p>{storeNotice.body}</p>
         <Link to="/shop">এখনই দেখুন <ArrowUpRight size={14} aria-hidden="true" /></Link>
       </div>
 

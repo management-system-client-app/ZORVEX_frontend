@@ -356,8 +356,6 @@ export function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -369,7 +367,6 @@ export function RegisterPage() {
       await register({
         ...form,
         phone: form.phone || undefined,
-        image: photo ?? undefined,
       });
       navigate("/account");
     } catch (reason) {
@@ -389,28 +386,6 @@ export function RegisterPage() {
       description="Create an account to save favorites and follow your orders."
     >
       <form className="login-form register-form" onSubmit={onSubmit}>
-        <div className="register-photo-row">
-          <div className="register-avatar-preview">
-            {preview ? <img src={preview} alt="Profile preview" /> : <UserRound size={30} strokeWidth={1.6} />}
-          </div>
-          <label className="register-photo-picker">
-            <ImagePlus size={18} strokeWidth={1.8} aria-hidden="true" />
-            <span>{photo ? photo.name : "Choose a profile photo"}</span>
-            <input
-              type="file"
-              accept="image/avif,image/jpeg,image/png,image/webp"
-              aria-label="Choose a profile photo"
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                setPhoto(file);
-                setPreview((current) => {
-                  if (current) URL.revokeObjectURL(current);
-                  return file ? URL.createObjectURL(file) : "";
-                });
-              }}
-            />
-          </label>
-        </div>
         <div className="register-name-grid">
           <label className="login-field"><span>First name <b>*</b></span><input autoComplete="given-name" placeholder="Enter your first name" required value={form.firstName} onChange={(event) => setForm({ ...form, firstName: event.target.value })} /></label>
           <label className="login-field"><span>Last name <b>*</b></span><input autoComplete="family-name" placeholder="Enter your last name" required value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} /></label>

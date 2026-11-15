@@ -1,16 +1,36 @@
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, ChevronRight, Gift, Heart, House, LayoutGrid, Mail, MapPin, Menu, Minus, PackageSearch, Phone, PiggyBank, Plus, Search, ShoppingBag, Trash2, UserRound, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, Gift, Heart, House, LayoutGrid, Mail, MapPin, Menu, Minus, PackageSearch, Phone, Plus, Search, ShoppingBag, Tags, Trash2, UserRound, X } from "lucide-react";
 import { api } from "../api";
 import { RowsSkeleton } from "./Skeleton";
 import { coverImage, money } from "../format";
 import { categoryImage, useAuth, useCart, useStore } from "../state";
 import type { Category, ProductCardData, User } from "../types";
 
+function prefetchBudgetFinds() {
+  void api.products({
+    page: "1",
+    limit: "40",
+    status: "ACTIVE",
+    sort: "price_asc",
+    search: undefined,
+    categoryId: undefined,
+    brandId: undefined,
+    gender: undefined,
+    sizeId: undefined,
+    colorId: undefined,
+    fabricId: undefined,
+    minPrice: undefined,
+    maxPrice: undefined,
+    inStock: undefined,
+  }).catch(() => undefined);
+}
+
 export function UserFace({ user, size = 32, className = "" }: { user: Pick<User, "firstName" | "email" | "avatarUrl">; size?: number; className?: string }) {
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
   const style = { width: size, height: size, fontSize: Math.max(11, Math.round(size * 0.4)) };
-  if (user.avatarUrl) {
-    return <img className={`user-face ${className}`} src={user.avatarUrl} alt="" style={style} />;
+  if (user.avatarUrl && failedAvatarUrl !== user.avatarUrl) {
+    return <img className={`user-face ${className}`} src={user.avatarUrl} alt="" style={style} onError={() => setFailedAvatarUrl(user.avatarUrl ?? null)} />;
   }
   return (
     <span className={`user-face user-face-default ${className}`} style={style} role="img" aria-label="Default user avatar">
@@ -352,7 +372,15 @@ export function Header() {
           </form>
           <nav className="header-promo-links" aria-label="Store offers">
             <Link to="/#daily-deals"><Gift size={19} /><span><strong>Offers</strong><small>Latest offers</small></span></Link>
-            <Link to="/shop?sort=price_asc"><PiggyBank size={19} /><span><strong>Budget finds</strong><small>Special deals</small></span></Link>
+            <Link
+              to="/shop?sort=price_asc"
+              onMouseEnter={prefetchBudgetFinds}
+              onFocus={prefetchBudgetFinds}
+              onPointerDown={prefetchBudgetFinds}
+            >
+              <Tags className="budget-finds-icon" size={20} strokeWidth={2} />
+              <span><strong>Budget finds</strong><small>Special deals</small></span>
+            </Link>
           </nav>
           <div className="header-tools">
             <button
