@@ -474,7 +474,7 @@ export function HomePage() {
 
       <div className="home-store-notice">
         <span>{storeNotice.title}</span>
-        <p>{storeNotice.body}</p>
+        <p><span className="home-store-notice-ticker">{storeNotice.body}</span></p>
         <Link to="/shop">এখনই দেখুন <ArrowUpRight size={14} aria-hidden="true" /></Link>
       </div>
 
@@ -489,7 +489,7 @@ export function HomePage() {
             <Link className="see-more" to="/shop">All categories</Link>
           </div>
           <div className="cat-row">
-            {tiles.map(({ category, image }) => (
+            {tiles.slice(0, 8).map(({ category, image }) => (
               <Link key={category.id} to={`/shop?categoryId=${category.id}`} className="cat-tile">
                 <div className="cat-photo">
                   {image ? <img src={image} alt="" loading="lazy" decoding="async" /> : <span>{category.name.slice(0, 1)}</span>}
