@@ -498,13 +498,6 @@ export function Header() {
               };
               const handleTopNavClick = (event: MouseEvent<HTMLAnchorElement>) => {
                 if (item.children.length > 0 && window.matchMedia("(max-width: 899px)").matches) {
-                  if (mobileOpenNavDropdown !== item.label) {
-                    event.preventDefault();
-                    event.currentTarget.blur();
-                    setDismissedNavDropdown(null);
-                    setMobileOpenNavDropdown(item.label);
-                    return;
-                  }
                   setMobileOpenNavDropdown(null);
                 }
                 dismissDropdown(event);
