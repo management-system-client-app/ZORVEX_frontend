@@ -526,7 +526,7 @@ export function HomePage() {
             <div className="home-section-heading">
               <span className="home-section-kicker">JUST LANDED</span>
               <h2>New arrivals</h2>
-              <p>Fresh finds added to the ResellKori collection.</p>
+              <p>Fresh finds added to the BazarGrid collection.</p>
             </div>
             <Link className="see-more" to={collectionHref}>
               See More

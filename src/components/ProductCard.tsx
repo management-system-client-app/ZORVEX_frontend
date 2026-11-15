@@ -61,9 +61,11 @@ export function ProductCard({
         </div>
         <div className={`card-copy${shopCard ? " shop-card-info" : ""}`}>
           {shopCard && product.category?.name ? <span className="shop-card-category">{product.category.name}</span> : null}
-          {product.brand?.name ? <span className="card-brand">{product.brand.name}</span> : null}
+          {product.brand?.name && product.brand.name.trim().toLowerCase() !== "none" ? (
+            <span className="card-brand">{product.brand.name}</span>
+          ) : null}
           <h3>{product.name}</h3>
-        {availableSizes.length > 0 ? (
+        {!shopCard && availableSizes.length > 0 ? (
           <div className="card-sizes" aria-label={`Sizes: ${availableSizes.map((size) => size.name).join(", ")}`}>
             <span className="card-sizes-label">Sizes</span>
             <div className="card-size-list">

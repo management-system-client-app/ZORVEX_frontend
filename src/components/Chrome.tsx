@@ -665,7 +665,7 @@ export function Footer() {
   const { user } = useAuth();
   const contactAddress = settings.address || "Avenue #02A, Road #13, House No #1339, Mirpur DOHS, Dhaka-1216, Bangladesh.";
   const contactPhone = settings.supportPhone || "+88-01885-998899";
-  const contactEmail = settings.supportEmail || "support@resellkori.com";
+  const contactEmail = settings.supportEmail || "support@bazargrid.com";
   const creationSocials = [
     { name: "Facebook", mark: "f", className: "footer-facebook", href: settings.facebookUrl },
     { name: "YouTube", mark: "▶", className: "footer-youtube" },
@@ -684,7 +684,7 @@ export function Footer() {
                 <span className="footer-contact-icon" aria-hidden="true"><MapPin size={12} strokeWidth={1.7} /></span>
                 <span>{contactAddress}</span>
               </p>
-              <a className="footer-contact-item" href={`tel:${contactPhone}`}>
+              <a className="footer-contact-item footer-phone-card" href={`tel:${contactPhone}`}>
                 <span className="footer-contact-icon" aria-hidden="true"><Phone size={12} strokeWidth={1.7} /></span>
                 <span>{contactPhone}</span>
               </a>
@@ -728,8 +728,8 @@ export function Footer() {
           <Link to="/pages/terms-and-conditions">Terms &amp; Conditions</Link>
         </nav>
         <section className="footer-column footer-social-column">
-          <h3>Follow ResellKori</h3>
-          <div className="footer-socials" aria-label="ResellKori social media">
+          <h3>Follow BazarGrid</h3>
+          <div className="footer-socials" aria-label="BazarGrid social media">
             {creationSocials.map((social) => {
               const className = `footer-social-icon ${social.className}`;
               return social.href
@@ -740,7 +740,7 @@ export function Footer() {
         </section>
       </div>
       <div className="footer-bottom">
-        © {new Date().getFullYear()} ResellKori. All Rights Reserved
+        © {new Date().getFullYear()} BazarGrid. All Rights Reserved
       </div>
     </footer>
   );
