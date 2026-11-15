@@ -785,8 +785,11 @@ export function CheckoutPage() {
         {cartLoading ? <RowsSkeleton rows={3} /> : null}
         {!cartLoading && cart.items.map((line) => (
           <div className="sub checkout-summary-item" key={line.id}>
-            <span>
-              {line.variant.product.name} × {line.quantity}
+            <span className="checkout-summary-product">
+              <span className="checkout-summary-product-image" aria-hidden="true">
+                {line.imageUrl ? <img src={line.imageUrl} alt="" /> : <ShoppingBag size={16} />}
+              </span>
+              <span className="checkout-summary-product-name">{line.variant.product.name} × {line.quantity}</span>
             </span>
             <span>{money(line.lineTotal)}</span>
           </div>

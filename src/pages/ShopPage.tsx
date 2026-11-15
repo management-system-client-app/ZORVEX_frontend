@@ -21,7 +21,7 @@ const genders = [
 ];
 
 export function ShopPage() {
-  const { catalog } = useStore();
+  const { catalog, categoryImages } = useStore();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const defaultGender = location.pathname === "/women" ? "WOMEN" : undefined;
@@ -55,6 +55,17 @@ export function ShopPage() {
     }),
     [params, defaultGender],
   );
+  const categoryScopeIds = useMemo(() => {
+    if (!query.categoryId) return [];
+    const ids = [query.categoryId];
+    for (let index = 0; index < ids.length; index += 1) {
+      for (const child of catalog.categories) {
+        if (child.parentId === ids[index] && child.isActive !== false) ids.push(child.id);
+      }
+    }
+    return ids;
+  }, [catalog.categories, query.categoryId]);
+  const categoryScopeKey = categoryScopeIds.join("|");
 
   const fabricIdsKey = catalog.fabrics.map((fabric) => fabric.id).join("|");
   useEffect(() => {
@@ -153,7 +164,32 @@ export function ShopPage() {
         setError("");
       }
       try {
-        const result = await api.products(query, fresh);
+        let result: { items: ProductCardData[]; meta: PageMeta };
+        if (categoryScopeIds.length > 1) {
+          const categoryResults = await Promise.all(categoryScopeIds.map((categoryId) =>
+            api.products({ ...query, categoryId, page: "1", limit: "100" }, fresh),
+          ));
+          const uniqueProducts = [...new Map(categoryResults.flatMap((page) => page.items).map((product) => [product.id, product])).values()];
+          const sort = query.sort;
+          if (sort === "price_asc" || sort === "price_desc") {
+            uniqueProducts.sort((first, second) => {
+              const difference = Number(first.basePrice) - Number(second.basePrice);
+              return sort === "price_asc" ? difference : -difference;
+            });
+          } else if (sort === "name_asc") {
+            uniqueProducts.sort((first, second) => first.name.localeCompare(second.name));
+          } else {
+            uniqueProducts.sort((first, second) => (second.createdAt ?? "").localeCompare(first.createdAt ?? ""));
+          }
+          const page = Number(query.page) || 1;
+          const limit = Number(query.limit) || 40;
+          result = {
+            items: uniqueProducts.slice((page - 1) * limit, page * limit),
+            meta: { page, limit, total: uniqueProducts.length, totalPages: Math.max(1, Math.ceil(uniqueProducts.length / limit)) },
+          };
+        } else {
+          result = await api.products(query, fresh);
+        }
         if (!active) return;
         setItems(result.items);
         setMeta(result.meta);
@@ -207,7 +243,7 @@ export function ShopPage() {
       window.removeEventListener("focus", refreshOnFocus);
       window.removeEventListener("app:products-changed", refreshOnFocus);
     };
-  }, [query]);
+  }, [query, categoryScopeKey]);
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params);
@@ -235,6 +271,13 @@ export function ShopPage() {
   }
 
   const category = catalog.categories.find((item) => item.id === params.get("categoryId"));
+  const categoryProductImages = [...new Set(items
+    .map((item) => item.imageUrl)
+    .filter((imageUrl): imageUrl is string => Boolean(imageUrl)))];
+  const categoryImage = category
+    ? categoryImages.get(category.id) ?? category.imageUrl ?? categoryProductImages[0]
+    : undefined;
+  const heroImage = categoryImage ?? categoryProductImages[0] ?? "/collection-tech.svg";
   const gender = genders.find((item) => item.id === (params.get("gender") ?? defaultGender));
   const crumb = category?.name ?? gender?.label ?? (params.get("search") ? `Search: ${params.get("search")}` : "Shop");
   const activeFilterCount = ["categoryId", "brandId", "gender", "sizeId", "colorId", "fabricId", "minPrice", "maxPrice", "inStock"]
@@ -269,13 +312,15 @@ export function ShopPage() {
       <p className="crumb">
         <Link to="/">Home</Link> / {crumb}
       </p>
-      <header className="shop-intro">
+      <header
+        className="shop-intro has-category-image"
+        style={{ backgroundImage: `linear-gradient(90deg, rgb(24 59 89 / 72%), rgb(36 90 120 / 48%)), url("${heroImage}")` }}
+      >
         <div>
           <span>THE COLLECTION</span>
           <h1>{crumb}</h1>
           <p>Explore products across every category, selected for our reseller community.</p>
         </div>
-        <div className="shop-intro-mark" aria-hidden="true" />
       </header>
       <div className="shop">
         <aside className="filters">

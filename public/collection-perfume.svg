@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 220">
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#523019"/><stop offset="1" stop-color="#d99032"/></linearGradient><linearGradient id="glass" x2="1"><stop stop-color="#e7b45e"/><stop offset=".5" stop-color="#fff0bd"/><stop offset="1" stop-color="#9f581e"/></linearGradient></defs>
+  <rect width="180" height="220" rx="18" fill="url(#bg)"/><circle cx="139" cy="45" r="42" fill="#ffd68a" opacity=".22"/><path d="M22 185 67 76h46l45 109" fill="#21180f" opacity=".26"/>
+  <rect x="72" y="39" width="36" height="29" rx="5" fill="#d7b76b"/><rect x="78" y="25" width="24" height="17" rx="3" fill="#27211a"/><rect x="61" y="65" width="58" height="112" rx="13" fill="url(#glass)" stroke="#ffe8af" stroke-width="3"/><path d="M71 84h38v56H71z" fill="#70441e" opacity=".82"/><path d="M77 92h26" stroke="#f5d68c" stroke-width="3"/><text x="90" y="119" fill="#fff0c4" text-anchor="middle" font-family="Georgia,serif" font-size="10" letter-spacing="2">LUXE</text><text x="90" y="135" fill="#fff0c4" text-anchor="middle" font-family="Arial,sans-serif" font-size="6" letter-spacing="1">PARFUM</text>
+</svg>

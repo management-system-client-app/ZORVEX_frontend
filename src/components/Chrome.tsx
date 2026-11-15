@@ -688,11 +688,21 @@ export function Footer() {
   const contactPhone = settings.supportPhone || "+88-01885-998899";
   const contactEmail = settings.supportEmail || "support@bazargrid.com";
   const creationSocials = [
-    { name: "Facebook", mark: "f", className: "footer-facebook", href: settings.facebookUrl },
-    { name: "YouTube", mark: "▶", className: "footer-youtube" },
-    { name: "Instagram", mark: "◎", className: "footer-instagram", href: settings.instagramUrl },
-    { name: "TikTok", mark: "♪", className: "footer-tiktok" },
+    { name: "Facebook", icon: "facebook", className: "footer-facebook", href: settings.facebookUrl },
+    { name: "YouTube", icon: "youtube", className: "footer-youtube" },
+    { name: "Instagram", icon: "instagram", className: "footer-instagram", href: settings.instagramUrl },
+    { name: "TikTok", icon: "tiktok", className: "footer-tiktok" },
   ];
+  const renderSocialIcon = (icon: string) => {
+    if (icon === "facebook") return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#0866ff" /><path fill="#fff" d="M13.4 21v-8.2h2.8l.4-3.2h-3.2V7.5c0-.9.3-1.5 1.6-1.5h1.7V3.1c-.3 0-1.4-.1-2.6-.1-2.6 0-4.4 1.6-4.4 4.5v2.1H6.8v3.2h2.9V21h3.7z" /></svg>;
+    if (icon === "youtube") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z" /></svg>;
+    if (icon === "instagram") return <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="18" cy="6" r="1" fill="currentColor" stroke="none" /></svg>;
+    return <svg viewBox="0 0 24 24" aria-hidden="true" className="footer-tiktok-mark">
+      <path d="M15.5 3v11.4a4.5 4.5 0 1 1-3-4.25v3.2a1.5 1.5 0 1 0 0 1.05V3h3Zm0 0c.6 2.1 2.2 3.5 4.5 3.8v3.1a9 9 0 0 1-4.5-1.7V3Z" transform="translate(-1 0)" fill="#25f4ee" />
+      <path d="M15.5 3v11.4a4.5 4.5 0 1 1-3-4.25v3.2a1.5 1.5 0 1 0 0 1.05V3h3Zm0 0c.6 2.1 2.2 3.5 4.5 3.8v3.1a9 9 0 0 1-4.5-1.7V3Z" transform="translate(1 0)" fill="#fe2c55" />
+      <path d="M15.5 3v11.4a4.5 4.5 0 1 1-3-4.25v3.2a1.5 1.5 0 1 0 0 1.05V3h3Zm0 0c.6 2.1 2.2 3.5 4.5 3.8v3.1a9 9 0 0 1-4.5-1.7V3Z" fill="#fff" />
+    </svg>;
+  };
 
   return (
     <footer className="footer">
@@ -754,8 +764,8 @@ export function Footer() {
             {creationSocials.map((social) => {
               const className = `footer-social-icon ${social.className}`;
               return social.href
-                ? <div key={social.name} className="footer-social-item"><a className={className} href={social.href} target="_blank" rel="noreferrer" aria-label={social.name}>{social.mark}</a><span className="footer-social-name">{social.name}</span></div>
-                : <div key={social.name} className="footer-social-item"><span className={className} aria-hidden="true">{social.mark}</span><span className="footer-social-name">{social.name}</span></div>;
+                ? <div key={social.name} className="footer-social-item"><a className={className} href={social.href} target="_blank" rel="noreferrer" aria-label={social.name}>{renderSocialIcon(social.icon)}</a><span className="footer-social-name">{social.name}</span></div>
+                : <div key={social.name} className="footer-social-item"><span className={className} aria-hidden="true">{renderSocialIcon(social.icon)}</span><span className="footer-social-name">{social.name}</span></div>;
             })}
           </div>
         </section>
