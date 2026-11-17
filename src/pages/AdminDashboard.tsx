@@ -1342,8 +1342,8 @@ export function AdminProducts() {
     event.preventDefault();
     if (!stockProduct) return;
     const quantity = Number(stockToAdd);
-    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
-      setStockError("Enter a whole number greater than zero.");
+    if (stockToAdd.trim() === "" || !Number.isSafeInteger(quantity) || quantity < 0) {
+      setStockError("Enter a whole number that is 0 or greater.");
       return;
     }
 
@@ -1352,7 +1352,7 @@ export function AdminProducts() {
     try {
       if (selectedStockVariant) {
         await api.saveVariant({
-          stock: selectedStockVariant.stock + quantity,
+          stock: quantity,
         }, selectedStockVariant.id);
       } else {
         const skuBase = (stockProduct.slug || stockProduct.name)
@@ -1407,7 +1407,7 @@ export function AdminProducts() {
         });
       }
 
-      setStockNote(`${quantity} units added to ${stockProduct.name}.`);
+      setStockNote(`Stock for ${stockProduct.name} set to ${quantity}.`);
       setStockProduct(null);
       setStockToAdd("");
     } catch (reason) {
@@ -1562,7 +1562,7 @@ export function AdminProducts() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">Inventory update</p>
-                <h2 id="stock-dialog-title" className="mt-1 text-lg font-semibold text-slate-100">Add stock</h2>
+                <h2 id="stock-dialog-title" className="mt-1 text-lg font-semibold text-slate-100">Set stock</h2>
                 <p className="mt-1 text-sm text-slate-400">{stockProduct.name}</p>
               </div>
               <button type="button" className="rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-300 disabled:opacity-50" disabled={stockBusy} onClick={() => setStockProduct(null)}>Close</button>
@@ -1582,17 +1582,17 @@ export function AdminProducts() {
                 {selectedStockVariant ? <p className="text-xs text-slate-400">Current stock: {selectedStockVariant.stock} · Reserved: {selectedStockVariant.reserved ?? 0}</p> : null}
               </>
             ) : (
-              <p className="rounded-xl border border-amber-800/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-100">This product has no active inventory option yet. Add the opening stock below to create one. For compatibility, the system uses “One Size” and “Not Applicable”; no option label is added.</p>
+              <p className="rounded-xl border border-amber-800/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-100">This product has no active inventory option yet. Enter the stock level to create one. For compatibility, the system uses “One Size” and “Not Applicable”; no option label is added.</p>
             )}
             <label className="grid gap-1.5 text-sm text-slate-300">
-              Units to add
-              <input className="h-11 rounded-xl border border-slate-600 bg-[#171c24] px-3 text-white" type="number" min="1" step="1" required value={stockToAdd} onChange={(event) => setStockToAdd(event.target.value)} placeholder="Enter quantity to add" />
+              Stock quantity
+              <input className="h-11 rounded-xl border border-slate-600 bg-[#171c24] px-3 text-white" type="number" min="0" step="1" required value={stockToAdd} onChange={(event) => setStockToAdd(event.target.value)} placeholder="Enter stock quantity (0 allowed)" />
             </label>
             {stockError ? <p className="rounded-lg border border-rose-800/60 bg-rose-950/30 px-3 py-2 text-sm text-rose-200" role="alert">{stockError}</p> : null}
             <div className="flex justify-end gap-2">
               <button type="button" className="rounded-xl border border-slate-600 px-4 py-2.5 text-sm text-slate-300" disabled={stockBusy} onClick={() => setStockProduct(null)}>Cancel</button>
               <button type="submit" className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50" disabled={stockBusy || (activeStockVariants.length > 0 && !selectedStockVariant)}>
-                {stockBusy ? "Saving…" : "Add stock"}
+                {stockBusy ? "Saving…" : "Save stock"}
               </button>
             </div>
           </form>
