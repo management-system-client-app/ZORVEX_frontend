@@ -300,6 +300,7 @@ export function Header() {
     .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name));
   const navLinks = [
     { label: "All Products", href: "/shop", children: [] as Category[] },
+    { label: "Mohasagor", href: "/mohasagor", children: [] as Category[] },
     ...topLevelCategories.map((category) => ({
       label: category.name,
       href: `/shop?categoryId=${category.id}`,
@@ -490,7 +491,9 @@ export function Header() {
             {navLinks.map((item) => {
               const active = item.label === "Home"
                 ? location.pathname === "/"
-                : navClass(item.href, false, location.pathname, location.search);
+                : item.href === "/mohasagor"
+                  ? location.pathname === "/mohasagor"
+                  : navClass(item.href, false, location.pathname, location.search);
               const compactHidden = item.label === "Budget Deals" || item.label === "Best Deals";
               const dismissDropdown = (event: MouseEvent<HTMLAnchorElement>) => {
                 event.currentTarget.blur();

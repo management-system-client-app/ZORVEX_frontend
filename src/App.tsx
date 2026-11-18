@@ -25,6 +25,7 @@ import { AdminStaff } from "./pages/AdminStaff";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { HomePage } from "./pages/HomePage";
 import { ProductPage } from "./pages/ProductPage";
+import { MohasagorProductsPage } from "./pages/MohasagorProductsPage";
 import { ShopPage } from "./pages/ShopPage";
 import { ToastViewport } from "./components/ToastViewport";
 import { useStore } from "./state";
@@ -234,6 +235,7 @@ export function App() {
         <Route element={<StoreShell />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/shop" element={<ShopPage />} />
+        <Route path="/mohasagor" element={<MohasagorProductsPage />} />
         <Route path="/women" element={<ShopPage />} />
         <Route path="/product/:id" element={<ProductPage />} />
         <Route path="/cart" element={<Navigate to="/checkout" replace />} />

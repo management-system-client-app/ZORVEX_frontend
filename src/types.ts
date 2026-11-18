@@ -92,6 +92,22 @@ export type ProductCardData = {
   }[];
 };
 
+export type MohasagorProduct = {
+  id: number | string;
+  name: string;
+  slug?: string | null;
+  details?: string | null;
+  category_id?: number | string | null;
+  product_code?: number | string;
+  discount?: number | string | null;
+  price?: number | string | null;
+  sale_price?: number | string | null;
+  reselling_price?: number | string | null;
+  product_image?: { id?: number | string; product_image?: string | null }[];
+  thumbnail_img?: string | null;
+  status?: number | string;
+};
+
 export type Variant = {
   id: string;
   sku: string;

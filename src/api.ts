@@ -32,6 +32,7 @@ import type {
   VariantRow,
   StaffAccount,
   StaffReferral,
+  MohasagorProduct,
 } from "./types";
 import { prepareImageForUpload } from "./imageUpload";
 
@@ -349,6 +350,11 @@ export const api = {
       items: res.data,
       meta: res.meta ?? { page: 1, limit: 20, total: res.data.length, totalPages: 1 },
     })),
+  mohasagorProducts: (page = 1, fresh = false) =>
+    request<MohasagorProduct[]>(`/mohasagor/products?page=${page}`, {}, { fresh }).then((res) => ({
+      items: res.data,
+      meta: res.meta ?? { page, limit: res.data.length, total: res.data.length, totalPages: 1 },
+    })),
   bestSellers: (fresh = false) => request<ProductCardData[]>("/products/best-sellers", {}, { fresh }).then((res) => res.data),
   related: (id: string) =>
     request<ProductCardData[]>(`/products/${id}/related`).then((res) => res.data),
@@ -380,6 +386,20 @@ export const api = {
       dispatchToast("success", "Added successfully");
       return product;
     } catch (reason) {
+      const isDuplicateSlug = reason instanceof ApiError &&
+        /product with this slug already exists|slug already exists/i.test(
+          [reason.message, ...(reason.errors ?? []).map((issue) => issue.message)].join(" "),
+        );
+      if (isDuplicateSlug && typeof input.slug === "string" && input.slug) {
+        const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+        try {
+          const product = (await submit({ ...input, slug: `${input.slug}-${suffix}` })).data;
+          dispatchToast("success", "Added successfully with a unique product URL");
+          return product;
+        } catch (retryReason) {
+          reason = retryReason;
+        }
+      }
       const rejectsFabricId = reason instanceof ApiError && reason.status === 422 &&
         (reason.message.includes('Unrecognized key: "fabricId"') ||
           reason.errors?.some((issue) => issue.message === 'Unrecognized key: "fabricId"'));
@@ -430,10 +450,32 @@ export const api = {
             return form;
           })()
         : JSON.stringify(input);
-    return request<ProductDetail>(`/products/${id}`, {
-      method: "PATCH",
-      body,
-    }).then((res) => res.data);
+    const submit = (productInput: Record<string, unknown> | null) => {
+      const requestBody = productInput
+        ? preparedImages.length > 0
+          ? (() => {
+              const form = new FormData();
+              form.append("data", JSON.stringify(productInput));
+              for (const image of preparedImages) form.append("images", image);
+              form.append("imageColorIds", JSON.stringify(imageColorIds));
+              return form;
+            })()
+          : JSON.stringify(productInput)
+        : body;
+      return request<ProductDetail>(`/products/${id}`, { method: "PATCH", body: requestBody });
+    };
+    try {
+      return (await submit(null)).data;
+    } catch (reason) {
+      const isDuplicateSlug = reason instanceof ApiError &&
+        /product with this slug already exists|slug already exists/i.test(
+          [reason.message, ...(reason.errors ?? []).map((issue) => issue.message)].join(" "),
+        );
+      const slug = input.slug;
+      if (!isDuplicateSlug || typeof slug !== "string" || !slug) throw reason;
+      const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      return (await submit({ ...input, slug: `${slug}-${suffix}` })).data;
+    }
   },
   colors: async (fresh = false): Promise<Color[]> => {
     const found = new Map<string, Color>();
