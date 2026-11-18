@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
-import { coverImage, extractSupplierSizes, money, productFlags } from "../format";
+import { coverImage, money, productFlags } from "../format";
 import { recordRecentlyViewed } from "../recentlyViewed";
 import type { ProductCardData } from "../types";
 
@@ -26,20 +26,6 @@ export function ProductCard({
     0,
   ) ?? 0;
   const soldOut = Array.isArray(product.variants) && availableStock === 0;
-  const sizeNames = [...new Set([
-    ...(product.supplierSizes ?? []),
-    ...extractSupplierSizes(product.description),
-    ...(product.variants ?? [])
-    .filter((variant) => variant.isActive !== false)
-    .flatMap((variant) => {
-      if (variant.size?.name) return [variant.size.name];
-      const option = variant.optionLabel?.replace(/^size\s*[:\-]\s*/i, "").trim();
-      return option && /^(?:XXS|XS|S|M|L|XL|XXL|XXXL|[2-5]XL|FREE\s*SIZE|ONE\s*SIZE|\d+(?:\s*[-/]\s*\d+)?(?:\s*(?:cm|mm|years?|yrs?|months?|mos?))?)$/i.test(option)
-        ? [option]
-        : [];
-    }),
-  ])];
-
   return (
     <article className={`card${dealCard ? " deal-card" : ""}${shopCard ? " shop-product-card" : ""}${soldOut ? " sold-out" : ""}`}>
       <Link to={`/product/${product.id}`} onClick={() => recordRecentlyViewed(product.id, product)}>
@@ -73,15 +59,6 @@ export function ProductCard({
             <span className="card-brand">{product.brand.name}</span>
           ) : null}
           <h3>{product.name}</h3>
-        {sizeNames.length > 0 ? (
-          <div className="card-sizes" aria-label={`Sizes: ${sizeNames.join(", ")}`}>
-            <span className="card-sizes-label">Sizes</span>
-            <div className="card-size-list">
-              {sizeNames.slice(0, 5).map((size) => <span className="card-size-chip" key={size}>{size}</span>)}
-              {sizeNames.length > 5 ? <span className="card-size-more">+{sizeNames.length - 5}</span> : null}
-            </div>
-          </div>
-        ) : null}
         {shopCard ? (
           <div className="shop-card-price-row">
             <p className="price">
