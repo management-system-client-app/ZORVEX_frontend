@@ -37,6 +37,7 @@ export function ShopPage() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
+  const loadedQueryKeyRef = useRef<string | null>(null);
   const [minPrice, setMinPrice] = useState(params.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(params.get("maxPrice") ?? "");
 
@@ -106,7 +107,8 @@ export function ShopPage() {
 
   useEffect(() => {
     let active = true;
-    let loadingInitial = items.length === 0;
+    const requestKey = JSON.stringify({ query, categoryScopeKey });
+    let loadingInitial = loadedQueryKeyRef.current !== requestKey;
     let refreshing = false;
     let refreshQueued = false;
 
@@ -153,10 +155,16 @@ export function ShopPage() {
           result = await api.products(query, fresh);
         }
         if (!active) return;
-        setItems(result.items);
-        setMeta(result.meta);
-        setNextPage(2);
+        const sameQuery = loadedQueryKeyRef.current === requestKey;
+        setItems((current) => {
+          if (!sameQuery) return result.items;
+          const refreshedIds = new Set(result.items.map((product) => product.id));
+          return [...result.items, ...current.filter((product) => !refreshedIds.has(product.id))];
+        });
+        setMeta((current) => ({ ...result.meta, page: sameQuery ? current?.page ?? 1 : 1 }));
+        if (!sameQuery) setNextPage(2);
         setHasMore(result.meta.totalPages > 1);
+        loadedQueryKeyRef.current = requestKey;
         setError("");
       } catch (reason: unknown) {
         if (!active) return;
@@ -343,8 +351,8 @@ export function ShopPage() {
           {!loading && items.length === 0 && !error ? <p className="empty">Sorry! No result.</p> : null}
           {!loading && items.length > 0 ? <ProductGrid products={items} shopCards /> : null}
           {hasMore ? (
-            <div ref={loadMoreRef} className="shop-load-more" aria-live="polite">
-              {loadingMore ? "Loading more products…" : "Scroll to load more products"}
+            <div ref={loadMoreRef} className="shop-load-more" role="status" aria-label={loadingMore ? "Loading more products" : undefined}>
+              {loadingMore ? <span className="shop-load-more-spinner" aria-hidden="true" /> : null}
             </div>
           ) : null}
         </div>

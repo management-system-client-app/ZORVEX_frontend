@@ -130,8 +130,8 @@ export function MohasagorProductsPage() {
         </div>
       ) : null}
       {!loading && !error && hasMore ? (
-        <div ref={loadMoreRef} className="mohasagor-load-more" aria-live="polite">
-          {loadingMore ? "Loading more products…" : "Scroll to load more products"}
+        <div ref={loadMoreRef} className="mohasagor-load-more" role="status" aria-label={loadingMore ? "Loading more products" : undefined}>
+          {loadingMore ? <span className="shop-load-more-spinner" aria-hidden="true" /> : null}
         </div>
       ) : null}
     </main>

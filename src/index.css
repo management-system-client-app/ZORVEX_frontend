@@ -14363,3 +14363,21 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 .mohasagor-category-section > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .mohasagor-category-section > header h2 { color: var(--ink); font-size: 19px; font-weight: 700; }
 .mohasagor-category-section > header span { color: var(--muted); font-size: 12px; }
+.shop-load-more,
+.mohasagor-load-more {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+}
+.shop-load-more-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgb(117 137 122 / 35%);
+  border-top-color: #68bd83;
+  border-radius: 50%;
+  animation: shop-load-spin 0.75s linear infinite;
+}
+@keyframes shop-load-spin {
+  to { transform: rotate(360deg); }
+}
+
