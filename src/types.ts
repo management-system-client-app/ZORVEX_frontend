@@ -73,6 +73,8 @@ export type ProductCardData = {
   id: string;
   name: string;
   slug?: string;
+  description?: string;
+  supplierSizes?: string[];
   basePrice: string | number;
   price?: string | number | null;
   compareAtPrice?: string | number | null;
@@ -105,6 +107,7 @@ export type MohasagorProduct = {
   sell_price?: number | string | null;
   sale_price?: number | string | null;
   reselling_price?: number | string | null;
+  product_variants?: { attribute?: string | null; variant?: string | null }[];
   product_image?: { id?: number | string; product_image?: string | null }[];
   thumbnail_img?: string | null;
   status?: number | string;
@@ -159,6 +162,7 @@ export type HomePayload = {
 export type CartLine = {
   id: string;
   quantity: number;
+  supplierSize?: string | null;
   unitPrice: number;
   lineTotal: number;
   imageUrl: string | null;

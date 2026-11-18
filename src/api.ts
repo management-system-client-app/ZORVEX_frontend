@@ -515,7 +515,7 @@ export const api = {
   sizeGuides: (categoryId: string) =>
     request<SizeGuide[]>(`/size-guides${qs({ categoryId })}`).then((res) => res.data),
   cart: () => request<Cart>("/cart").then((res) => res.data),
-  addCartItem: (body: { variantId?: string; productId?: string; quantity: number }) =>
+  addCartItem: (body: { variantId?: string; productId?: string; supplierSize?: string; quantity: number }) =>
     request<Cart>("/cart/items", { method: "POST", body: JSON.stringify(body) }).then((res) => res.data),
   removeCartItem: (itemId: string) =>
     request<Cart>(`/cart/items/${itemId}`, { method: "DELETE" }).then((res) => res.data),

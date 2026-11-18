@@ -647,6 +647,7 @@ function CartDrawer() {
                 </div>
                 <div className="cart-line-meta">
                   {line.variant.optionLabel ? <span>{line.variant.optionLabel}</span> : null}
+                  {line.supplierSize ? <span>Size: {line.supplierSize}</span> : null}
                   {line.variant.size ? <span>{line.variant.size.name}</span> : null}
                   {line.variant.color ? <span>{line.variant.color.name}</span> : null}
                   {line.variant.fabric ? <span>{line.variant.fabric.name}</span> : null}

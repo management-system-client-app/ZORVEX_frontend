@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
-import { coverImage, money, productFlags } from "../format";
+import { coverImage, extractSupplierSizes, money, productFlags } from "../format";
 import { recordRecentlyViewed } from "../recentlyViewed";
 import type { ProductCardData } from "../types";
 
@@ -26,11 +26,19 @@ export function ProductCard({
     0,
   ) ?? 0;
   const soldOut = Array.isArray(product.variants) && availableStock === 0;
-  const availableSizes = Array.from(new Map(
-    (product.variants ?? [])
-      .filter((variant) => variant.size && variant.isActive !== false)
-      .map((variant) => [variant.size!.id, variant.size!] as const),
-  ).values());
+  const sizeNames = [...new Set([
+    ...(product.supplierSizes ?? []),
+    ...extractSupplierSizes(product.description),
+    ...(product.variants ?? [])
+    .filter((variant) => variant.isActive !== false)
+    .flatMap((variant) => {
+      if (variant.size?.name) return [variant.size.name];
+      const option = variant.optionLabel?.replace(/^size\s*[:\-]\s*/i, "").trim();
+      return option && /^(?:XXS|XS|S|M|L|XL|XXL|XXXL|[2-5]XL|FREE\s*SIZE|ONE\s*SIZE|\d+(?:\s*[-/]\s*\d+)?(?:\s*(?:cm|mm|years?|yrs?|months?|mos?))?)$/i.test(option)
+        ? [option]
+        : [];
+    }),
+  ])];
 
   return (
     <article className={`card${dealCard ? " deal-card" : ""}${shopCard ? " shop-product-card" : ""}${soldOut ? " sold-out" : ""}`}>
@@ -65,12 +73,12 @@ export function ProductCard({
             <span className="card-brand">{product.brand.name}</span>
           ) : null}
           <h3>{product.name}</h3>
-        {!shopCard && availableSizes.length > 0 ? (
-          <div className="card-sizes" aria-label={`Sizes: ${availableSizes.map((size) => size.name).join(", ")}`}>
+        {sizeNames.length > 0 ? (
+          <div className="card-sizes" aria-label={`Sizes: ${sizeNames.join(", ")}`}>
             <span className="card-sizes-label">Sizes</span>
             <div className="card-size-list">
-              {availableSizes.slice(0, 5).map((size) => <span className="card-size-chip" key={size.id}>{size.name}</span>)}
-              {availableSizes.length > 5 ? <span className="card-size-more">+{availableSizes.length - 5}</span> : null}
+              {sizeNames.slice(0, 5).map((size) => <span className="card-size-chip" key={size}>{size}</span>)}
+              {sizeNames.length > 5 ? <span className="card-size-more">+{sizeNames.length - 5}</span> : null}
             </div>
           </div>
         ) : null}

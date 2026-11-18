@@ -152,7 +152,7 @@ type CartValue = {
   drawer: boolean;
   setDrawer: (open: boolean) => void;
   refresh: () => Promise<void>;
-  add: (variantId: string, quantity: number) => Promise<void>;
+  add: (variantId: string, quantity: number, supplierSize?: string) => Promise<void>;
   remove: (itemId: string) => Promise<void>;
   setQuantity: (line: CartLine, quantity: number) => Promise<void>;
 };
@@ -194,10 +194,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     refresh().catch(() => setCart(emptyCart));
   }, [ready, user, refresh]);
 
-  const add = useCallback(async (variantId: string, quantity: number) => {
+  const add = useCallback(async (variantId: string, quantity: number, supplierSize?: string) => {
     setBusy(true);
     try {
-      setCart(keepSession(await api.addCartItem({ variantId, quantity })));
+      setCart(keepSession(await api.addCartItem({ variantId, quantity, supplierSize })));
       setDrawer(true);
     } finally {
       setBusy(false);
@@ -224,13 +224,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (quantity > line.quantity) {
         setCart(
           keepSession(
-            await api.addCartItem({ variantId: line.variant.id, quantity: quantity - line.quantity }),
+            await api.addCartItem({ variantId: line.variant.id, supplierSize: line.supplierSize ?? undefined, quantity: quantity - line.quantity }),
           ),
         );
         return;
       }
       await api.removeCartItem(line.id);
-      setCart(keepSession(await api.addCartItem({ variantId: line.variant.id, quantity })));
+      setCart(keepSession(await api.addCartItem({ variantId: line.variant.id, supplierSize: line.supplierSize ?? undefined, quantity })));
     } finally {
       setBusy(false);
     }

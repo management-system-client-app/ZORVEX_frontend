@@ -587,11 +587,11 @@ export function CheckoutPage() {
         <section className="checkout-products" aria-label="কার্টের পণ্য">
           {cartLoading ? <RowsSkeleton rows={1} /> : null}
           {!cartLoading && cart.items.map((line) => {
-            const variant = line.variant.optionLabel || [
+            const variant = [line.variant.optionLabel, line.supplierSize ? `Size: ${line.supplierSize}` : null, ...[
               line.variant.size?.name,
               line.variant.color?.name,
               line.variant.fabric?.name,
-            ].filter(Boolean).join(" | ");
+            ]].filter(Boolean).join(" | ");
             const quantityOptions = Array.from({ length: Math.min(5, line.availableQuantity) }, (_, index) => index + 1);
             if (!quantityOptions.includes(line.quantity)) quantityOptions.push(line.quantity);
             return (

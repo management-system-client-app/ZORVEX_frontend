@@ -111,6 +111,10 @@ export function MohasagorProductsPage() {
                   const image = imageUrl(product.product_image?.find((item) => item.product_image)?.product_image ?? product.thumbnail_img);
                   const description = plainText(product.details);
                   const price = product.price;
+                  const sizes = [...new Set((product.product_variants ?? [])
+                    .filter((option) => /^(size|age)$/i.test(option.attribute?.trim() ?? ""))
+                    .map((option) => option.variant?.trim() ?? "")
+                    .filter(Boolean))];
                   return (
                     <article className="mohasagor-card" key={product.id}>
                       <div className="mohasagor-card-image">
@@ -119,6 +123,15 @@ export function MohasagorProductsPage() {
                       <div className="mohasagor-card-copy">
                         <h2>{product.name}</h2>
                         {description ? <p>{description.slice(0, 150)}{description.length > 150 ? "…" : ""}</p> : null}
+                        {sizes.length > 0 ? (
+                          <div className="card-sizes" aria-label={`Sizes: ${sizes.join(", ")}`}>
+                            <span className="card-sizes-label">Sizes</span>
+                            <div className="card-size-list">
+                              {sizes.slice(0, 5).map((size) => <span className="card-size-chip" key={size}>{size}</span>)}
+                              {sizes.length > 5 ? <span className="card-size-more">+{sizes.length - 5}</span> : null}
+                            </div>
+                          </div>
+                        ) : null}
                         {price != null ? <strong>{money(price)}</strong> : null}
                       </div>
                     </article>

@@ -4,7 +4,7 @@ import { ArrowRight, Clock3, MessageCircle, PackageCheck, Ruler, Store } from "l
 import { ApiError, api, DATA_REFRESH_INTERVAL, hydrateImages } from "../api";
 import { ProductGrid } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
-import { coverImage, money, productFlags } from "../format";
+import { coverImage, extractSupplierSizes, money, productFlags } from "../format";
 import { readRecentlyViewedIds, readRecentlyViewedProducts, recordRecentlyViewed } from "../recentlyViewed";
 import { useAuth, useCart, useStore } from "../state";
 import { isStaffReferralId, readStaffReferralId, saveStaffReferralId } from "../staffReferral";
@@ -109,6 +109,7 @@ export function ProductPage() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [image, setImage] = useState(0);
   const [sizeId, setSizeId] = useState<string | null>(null);
+  const [supplierSize, setSupplierSize] = useState<string | null>(null);
   const [colorId, setColorId] = useState<string | null>(null);
   const [fabricId, setFabricId] = useState<string | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -209,6 +210,7 @@ export function ProductPage() {
         activeVariants.find((variant) => Math.max(variant.stock - (variant.reserved ?? 0), 0) > 0) ??
         activeVariants[0];
       setSizeId(first && hasProductSize(first) ? first.size?.id ?? null : null);
+      setSupplierSize(null);
       setColorId(first?.color?.id ?? null);
       setFabricId(first && hasProductFabric(first) ? first.fabric?.id ?? null : null);
       setSelectedVariantId(first?.id ?? null);
@@ -452,11 +454,15 @@ export function ProductPage() {
   if (!product) return <DetailSkeleton />;
 
   const flags = productFlags(product);
+  const supplierSizes = sizes.length === 0
+    ? [...new Set([...(product.supplierSizes ?? []), ...extractSupplierSizes(product.description)])]
+    : [];
   const unit = selected?.price != null ? Number(selected.price) : flags.price;
   const available = selected ? Math.max(selected.stock - (selected.reserved ?? 0), 0) : 0;
   const selectedOptionSummary = [
     selected?.optionLabel,
     selected?.size?.name,
+    supplierSize,
     selected?.color?.name,
     selected?.fabric?.name,
   ]
@@ -503,7 +509,7 @@ export function ProductPage() {
     }
     setError("");
     try {
-      await add(selected.id, quantity);
+      await add(selected.id, quantity, supplierSize ?? undefined);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not add to cart");
     }
@@ -516,7 +522,7 @@ export function ProductPage() {
     }
     setError("");
     try {
-      await add(selected.id, quantity);
+      await add(selected.id, quantity, supplierSize ?? undefined);
       setDrawer(false);
       navigate("/checkout");
     } catch (reason) {
@@ -607,6 +613,27 @@ export function ProductPage() {
               <span>Product Options</span>
               <strong>{selectedOptionSummary}</strong>
             </header>
+          {supplierSizes.length > 0 ? (
+            <>
+              <p className="option-label">Available sizes</p>
+              <div className="sizes" aria-label={`Available sizes: ${supplierSizes.join(", ")}`}>
+                {supplierSizes.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={supplierSize === size ? "size-btn on supplier-size-chip" : "size-btn supplier-size-chip"}
+                    aria-pressed={supplierSize === size}
+                    onClick={() => {
+                      setSupplierSize(size);
+                      setError("");
+                    }}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
           {generalOptions.length > 1 || generalOptions.some((variant) => variant.optionLabel?.trim()) ? (
             <>
               <p className="option-label">Choose an option</p>

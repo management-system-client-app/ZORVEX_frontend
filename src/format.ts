@@ -49,6 +49,16 @@ export function productFlags(product: {
   return { price, compare: onSale ? compare : null, onSale, isNew };
 }
 
+export function extractSupplierSizes(description?: string | null): string[] {
+  const options = description?.match(/(?:^|\n)Supplier options:\s*([^\n]+)/i)?.[1];
+  if (!options) return [];
+  return [...new Set(options.split("|").flatMap((group) => {
+    const separator = group.indexOf(":");
+    if (separator < 0 || !/^(?:size|age)$/i.test(group.slice(0, separator).trim())) return [];
+    return group.slice(separator + 1).split(",").map((value) => value.trim()).filter(Boolean);
+  }))];
+}
+
 export function coverImage(product: {
   images?: { url: string; isPrimary?: boolean }[];
   imageUrl?: string | null;
