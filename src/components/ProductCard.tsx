@@ -88,6 +88,11 @@ export function ProductCard({
             {flags.compare != null ? <s>{money(flags.compare)}</s> : null}
           </p>
         )}
+        {flags.compare != null && flags.compare > flags.price ? (
+          <p className="expected-selling-price">
+            সম্ভাব্য বিক্রয় মূল্যঃ <strong>{money(flags.compare)}</strong>
+          </p>
+        ) : null}
         {showAvailableStock ? <p className="stock-count">Available: {availableStock}</p> : null}
         </div>
       </Link>
