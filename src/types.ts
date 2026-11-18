@@ -74,6 +74,7 @@ export type ProductCardData = {
   name: string;
   slug?: string;
   basePrice: string | number;
+  price?: string | number | null;
   compareAtPrice?: string | number | null;
   createdAt?: string;
   onSale?: boolean;
@@ -101,6 +102,7 @@ export type MohasagorProduct = {
   product_code?: number | string;
   discount?: number | string | null;
   price?: number | string | null;
+  sell_price?: number | string | null;
   sale_price?: number | string | null;
   reselling_price?: number | string | null;
   product_image?: { id?: number | string; product_image?: string | null }[];

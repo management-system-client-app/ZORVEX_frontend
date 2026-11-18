@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { money } from "../format";
 import type { MohasagorProduct, PageMeta } from "../types";
@@ -29,32 +29,63 @@ export function MohasagorProductsPage() {
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState("");
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
+  const lastRequestAtRef = useRef(0);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError("");
-    api.mohasagorProducts(page, true)
-      .then((result) => {
+    if (page === 1) {
+      setLoading(true);
+      setError("");
+    } else {
+      setLoadingMore(true);
+    }
+    const loadPage = async () => {
+      if (page > 1) {
+        const wait = Math.max(0, 13_000 - (Date.now() - lastRequestAtRef.current));
+        if (wait > 0) await new Promise((resolve) => window.setTimeout(resolve, wait));
+      }
+      try {
+        const result = await api.mohasagorProducts(page, true);
         if (!active) return;
-        setProducts(result.items);
+        setProducts((current) => page === 1
+          ? result.items
+          : [...new Map([...current, ...result.items].map((product) => [product.id, product])).values()]);
         setMeta(result.meta);
-      })
-      .catch((reason: unknown) => {
+        setHasMore(result.meta.page < result.meta.totalPages);
+        lastRequestAtRef.current = Date.now();
+      } catch (reason: unknown) {
         if (active) setError(reason instanceof Error ? reason.message : "Could not load Mohasagor products");
-      })
-      .finally(() => { if (active) setLoading(false); });
+      } finally {
+        if (active) {
+          setLoading(false);
+          setLoadingMore(false);
+          loadingMoreRef.current = false;
+        }
+      }
+    };
+    void loadPage();
     return () => { active = false; };
   }, [page]);
 
-  const firstVisiblePage = meta
-    ? Math.max(1, Math.min(page - 2, Math.max(1, meta.totalPages - 4)))
-    : 1;
-  const visiblePages = meta
-    ? Array.from({ length: Math.min(5, meta.totalPages) }, (_, index) => firstVisiblePage + index)
-    : [];
   const productGroups = groupMohasagorProducts(products, catalog.categories);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !hasMore || loading || loadingMore) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && !loadingMoreRef.current) {
+        loadingMoreRef.current = true;
+        setPage((current) => current + 1);
+      }
+    }, { rootMargin: "700px 0px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, page]);
 
   return (
     <main className="mohasagor-page">
@@ -64,7 +95,7 @@ export function MohasagorProductsPage() {
           <h1>Mohasagor Products</h1>
           <p>Browse products from our Mohasagor catalog.</p>
         </div>
-        {!loading && !error && meta ? <strong>{meta.total.toLocaleString()} products · Page {meta.page} of {meta.totalPages}</strong> : null}
+        {!loading && !error && meta ? <strong>{meta.total.toLocaleString()} products</strong> : null}
       </header>
 
       {error ? <p className="mohasagor-message error">{error}</p> : null}
@@ -98,22 +129,10 @@ export function MohasagorProductsPage() {
           ))}
         </div>
       ) : null}
-      {!loading && !error && meta && meta.totalPages > 1 ? (
-        <nav className="mohasagor-pagination" aria-label="Mohasagor product pages">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>Previous</button>
-          {visiblePages.map((number) => (
-            <button
-              type="button"
-              key={number}
-              className={number === page ? "on" : ""}
-              aria-current={number === page ? "page" : undefined}
-              onClick={() => setPage(number)}
-            >
-              {number}
-            </button>
-          ))}
-          <button type="button" disabled={page >= meta.totalPages} onClick={() => setPage((current) => current + 1)}>Next</button>
-        </nav>
+      {!loading && !error && hasMore ? (
+        <div ref={loadMoreRef} className="mohasagor-load-more" aria-live="polite">
+          {loadingMore ? "Loading more products…" : "Scroll to load more products"}
+        </div>
       ) : null}
     </main>
   );

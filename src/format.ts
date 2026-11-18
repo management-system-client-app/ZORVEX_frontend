@@ -31,12 +31,13 @@ export function money(value: string | number | null | undefined): string {
 
 export function productFlags(product: {
   basePrice: string | number;
+  price?: string | number | null;
   compareAtPrice?: string | number | null;
   createdAt?: string;
   onSale?: boolean;
   isNew?: boolean;
 }) {
-  const price = Number(product.basePrice);
+  const price = Number(product.price ?? product.basePrice);
   const compare =
     product.compareAtPrice == null || product.compareAtPrice === ""
       ? null

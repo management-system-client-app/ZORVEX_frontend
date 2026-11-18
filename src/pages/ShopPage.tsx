@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { api, DATA_REFRESH_INTERVAL, hydrateImages } from "../api";
+import { api, DATA_REFRESH_INTERVAL } from "../api";
 import { ProductGrid } from "../components/ProductCard";
 import { ProductGridSkeleton } from "../components/Skeleton";
 import { useStore } from "../state";
@@ -30,15 +30,19 @@ export function ShopPage() {
   const [colors, setColors] = useState<Color[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextPage, setNextPage] = useState(2);
   const [sheet, setSheet] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const [availableFabricIds, setAvailableFabricIds] = useState<Set<string> | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
   const [minPrice, setMinPrice] = useState(params.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(params.get("maxPrice") ?? "");
 
   const query = useMemo(
     () => ({
-      page: params.get("page") ?? "1",
+      page: "1",
       limit: "40",
       status: "ACTIVE",
       sort: params.get("sort") ?? "latest",
@@ -66,52 +70,6 @@ export function ShopPage() {
     return ids;
   }, [catalog.categories, query.categoryId]);
   const categoryScopeKey = categoryScopeIds.join("|");
-
-  const fabricIdsKey = catalog.fabrics.map((fabric) => fabric.id).join("|");
-  useEffect(() => {
-    const fabricIds = catalog.fabrics.map((fabric) => fabric.id);
-    setAvailableFabricIds(null);
-    if (fabricIds.length === 0) {
-      setAvailableFabricIds(new Set());
-      return;
-    }
-    let active = true;
-    const refreshFabricAvailability = async () => {
-      try {
-        const firstPage = await api.variantsPage({ page: 1, limit: 100, isActive: true });
-        const variantPages = firstPage.meta.totalPages > 1
-          ? await Promise.all(Array.from({ length: firstPage.meta.totalPages - 1 }, (_, index) =>
-              api.variantsPage({ page: index + 2, limit: 100, isActive: true }),
-            ))
-          : [];
-        const activeFabricIds = new Set(
-          [firstPage.items, ...variantPages.map((page) => page.items)]
-            .flat()
-            .map((variant) => variant.fabricId)
-            .filter((fabricId): fabricId is string => typeof fabricId === "string" && fabricIds.includes(fabricId)),
-        );
-        const results = await Promise.all([...activeFabricIds].map(async (fabricId) => {
-          try {
-            const result = await api.products({ page: 1, limit: 1, status: "ACTIVE", fabricId });
-            return { fabricId, hasProducts: result.meta.total > 0 };
-          } catch {
-            return { fabricId, hasProducts: true };
-          }
-        }));
-        if (active) setAvailableFabricIds(new Set(results.filter((result) => result.hasProducts).map((result) => result.fabricId)));
-      } catch {
-        if (active) setAvailableFabricIds(null);
-      }
-    };
-    void refreshFabricAvailability();
-    window.addEventListener("app:products-changed", refreshFabricAvailability);
-    window.addEventListener("app:variant-changed", refreshFabricAvailability);
-    return () => {
-      active = false;
-      window.removeEventListener("app:products-changed", refreshFabricAvailability);
-      window.removeEventListener("app:variant-changed", refreshFabricAvailability);
-    };
-  }, [fabricIdsKey]);
 
   useEffect(() => {
     let active = true;
@@ -173,7 +131,7 @@ export function ShopPage() {
           const sort = query.sort;
           if (sort === "price_asc" || sort === "price_desc") {
             uniqueProducts.sort((first, second) => {
-              const difference = Number(first.basePrice) - Number(second.basePrice);
+              const difference = Number(first.price ?? first.basePrice) - Number(second.price ?? second.basePrice);
               return sort === "price_asc" ? difference : -difference;
             });
           } else if (sort === "name_asc") {
@@ -181,11 +139,15 @@ export function ShopPage() {
           } else {
             uniqueProducts.sort((first, second) => (second.createdAt ?? "").localeCompare(first.createdAt ?? ""));
           }
-          const page = Number(query.page) || 1;
           const limit = Number(query.limit) || 40;
           result = {
-            items: uniqueProducts.slice((page - 1) * limit, page * limit),
-            meta: { page, limit, total: uniqueProducts.length, totalPages: Math.max(1, Math.ceil(uniqueProducts.length / limit)) },
+            items: uniqueProducts,
+            meta: {
+              page: 1,
+              limit,
+              total: uniqueProducts.length,
+              totalPages: Math.max(1, ...categoryResults.map((page) => page.meta.totalPages)),
+            },
           };
         } else {
           result = await api.products(query, fresh);
@@ -193,23 +155,9 @@ export function ShopPage() {
         if (!active) return;
         setItems(result.items);
         setMeta(result.meta);
+        setNextPage(2);
+        setHasMore(result.meta.totalPages > 1);
         setError("");
-        void hydrateImages(result.items)
-          .then((withImages) => {
-            if (!active) return;
-            const hydrated = new Map(withImages.map((product) => [product.id, product]));
-            setItems((current) =>
-              current.map((product) => {
-                const hydratedProduct = hydrated.get(product.id);
-                return hydratedProduct?.imageUrl && !product.imageUrl
-                  ? { ...product, imageUrl: hydratedProduct.imageUrl }
-                  : product;
-              }),
-            );
-          })
-          .catch((reason: unknown) => {
-            console.warn("Product images could not be hydrated", reason);
-          });
       } catch (reason: unknown) {
         if (!active) return;
         setError(reason instanceof Error ? reason.message : "Could not load products");
@@ -244,6 +192,53 @@ export function ShopPage() {
       window.removeEventListener("app:products-changed", refreshOnFocus);
     };
   }, [query, categoryScopeKey]);
+
+  async function loadMoreProducts() {
+    if (!hasMore || loadingMoreRef.current || loading) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const pages = categoryScopeIds.length > 1
+        ? await Promise.all(categoryScopeIds.map((categoryId) =>
+            api.products({ ...query, categoryId, page: String(nextPage), limit: "100" }, true),
+          ))
+        : [await api.products({ ...query, page: String(nextPage) }, true)];
+      const incoming = pages.flatMap((page) => page.items);
+      setItems((current) => {
+        const unique = [...new Map([...current, ...incoming].map((product) => [product.id, product])).values()];
+        if (query.sort === "price_asc" || query.sort === "price_desc") {
+          unique.sort((first, second) => {
+            const difference = Number(first.price ?? first.basePrice) - Number(second.price ?? second.basePrice);
+            return query.sort === "price_asc" ? difference : -difference;
+          });
+        } else if (query.sort === "name_asc") {
+          unique.sort((first, second) => first.name.localeCompare(second.name));
+        } else {
+          unique.sort((first, second) => (second.createdAt ?? "").localeCompare(first.createdAt ?? ""));
+        }
+        return unique;
+      });
+      const more = pages.some((page) => page.meta.page < page.meta.totalPages);
+      setHasMore(more);
+      setNextPage((current) => current + 1);
+      setMeta((current) => current ? { ...current, page: nextPage } : current);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not load more products");
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !hasMore || loading || loadingMore) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) void loadMoreProducts();
+    }, { rootMargin: "700px 0px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, nextPage, query, categoryScopeKey]);
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params);
@@ -282,9 +277,7 @@ export function ShopPage() {
   const crumb = category?.name ?? gender?.label ?? (params.get("search") ? `Search: ${params.get("search")}` : "Shop");
   const activeFilterCount = ["categoryId", "brandId", "gender", "sizeId", "colorId", "fabricId", "minPrice", "maxPrice", "inStock"]
     .filter((key) => params.has(key)).length;
-  const fabricsWithProducts = availableFabricIds
-    ? catalog.fabrics.filter((fabric) => availableFabricIds.has(fabric.id))
-    : catalog.fabrics;
+  const fabricsWithProducts = catalog.fabrics;
 
   const filterProps = {
     catalog,
@@ -314,12 +307,12 @@ export function ShopPage() {
       </p>
       <header
         className="shop-intro has-category-image"
-        style={{ backgroundImage: `linear-gradient(90deg, rgb(24 59 89 / 72%), rgb(36 90 120 / 48%)), url("${heroImage}")` }}
+        style={{ backgroundImage: `linear-gradient(90deg, rgb(12 31 47 / 78%), rgb(12 31 47 / 20%)), url("${heroImage}")` }}
       >
         <div>
-          <span>THE COLLECTION</span>
+          <span>BAZERGRID COLLECTION</span>
           <h1>{crumb}</h1>
-          <p>Explore products across every category, selected for our reseller community.</p>
+          <p>Find your next best-selling product for your store.</p>
         </div>
       </header>
       <div className="shop">
@@ -349,18 +342,9 @@ export function ShopPage() {
           {loading ? <ProductGridSkeleton /> : null}
           {!loading && items.length === 0 && !error ? <p className="empty">Sorry! No result.</p> : null}
           {!loading && items.length > 0 ? <ProductGrid products={items} shopCards /> : null}
-          {meta && meta.totalPages > 1 ? (
-            <div className="pager">
-              {Array.from({ length: meta.totalPages }, (_, index) => index + 1).map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  className={page === meta.page ? "on" : ""}
-                  onClick={() => setParam("page", String(page))}
-                >
-                  {page}
-                </button>
-              ))}
+          {hasMore ? (
+            <div ref={loadMoreRef} className="shop-load-more" aria-live="polite">
+              {loadingMore ? "Loading more products…" : "Scroll to load more products"}
             </div>
           ) : null}
         </div>

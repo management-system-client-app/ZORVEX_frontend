@@ -962,7 +962,7 @@ export function ProductPage() {
                           {productFlags(recent).isNew ? <span className="flag">New</span> : null}
                         </div>
                         <strong>{recent.name}</strong>
-                        <span className="price">{money(recent.basePrice)}</span>
+                        <span className="price">{money(productFlags(recent).price)}</span>
                       </Link>
                     );
                   })}

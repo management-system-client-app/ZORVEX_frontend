@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ChevronRight, Gift, Heart, House, LayoutGrid, Mail, MapPin, Menu, Minus, PackageSearch, Phone, Plus, Search, ShoppingBag, Tags, Trash2, UserRound, X } from "lucide-react";
 import { api } from "../api";
 import { RowsSkeleton } from "./Skeleton";
-import { coverImage, money } from "../format";
+import { coverImage, money, productFlags } from "../format";
 import { categoryImage, useAuth, useCart, useStore } from "../state";
 import type { Category, ProductCardData, User } from "../types";
 
@@ -300,7 +300,6 @@ export function Header() {
     .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name));
   const navLinks = [
     { label: "All Products", href: "/shop", children: [] as Category[] },
-    { label: "Mohasagor", href: "/mohasagor", children: [] as Category[] },
     ...topLevelCategories.map((category) => ({
       label: category.name,
       href: `/shop?categoryId=${category.id}`,
@@ -360,7 +359,7 @@ export function Header() {
                         <strong>{product.name}</strong>
                         {product.brand?.name ? <small>{product.brand.name}</small> : null}
                       </span>
-                      <span className="search-suggestion-price">{money(product.basePrice)}</span>
+                      <span className="search-suggestion-price">{money(productFlags(product).price)}</span>
                     </button>
                   );
                 }) : <p className="search-suggestions-state">No matching products</p>}
@@ -491,9 +490,7 @@ export function Header() {
             {navLinks.map((item) => {
               const active = item.label === "Home"
                 ? location.pathname === "/"
-                : item.href === "/mohasagor"
-                  ? location.pathname === "/mohasagor"
-                  : navClass(item.href, false, location.pathname, location.search);
+                : navClass(item.href, false, location.pathname, location.search);
               const compactHidden = item.label === "Budget Deals" || item.label === "Best Deals";
               const dismissDropdown = (event: MouseEvent<HTMLAnchorElement>) => {
                 event.currentTarget.blur();
