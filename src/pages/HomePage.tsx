@@ -8,22 +8,6 @@ import { productFlags } from "../format";
 import { useStore } from "../state";
 import type { HomeBlock, HomePayload, ProductCardData } from "../types";
 
-const getCountdownParts = (milliseconds: number) => {
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return { days, hours, minutes, seconds };
-};
-
-const getTimeUntilDailyReset = (now: number) => {
-  const tomorrow = new Date(now);
-  tomorrow.setHours(24, 0, 0, 0);
-  return tomorrow.getTime() - now;
-};
-
 const HOME_CACHE_KEY = "store_home_payload_v2";
 const LATEST_PRODUCTS_CACHE_KEY = "store_latest_products";
 const DAILY_DEALS_CACHE_KEY = "store_daily_deals";
@@ -206,7 +190,6 @@ export function HomePage() {
   );
   const homePayloadVersion = useRef(0);
   const [best, setBest] = useState<ProductCardData[]>(() => readCachedProducts(BEST_SELLERS_CACHE_KEY));
-  const [timeLeft, setTimeLeft] = useState(() => getTimeUntilDailyReset(Date.now()));
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(initialHome === null);
   const skeletonRef = useRef<HTMLDivElement>(null);
@@ -224,15 +207,12 @@ export function HomePage() {
   }, []);
 
   function updateDailyDeals(products: ProductCardData[]) {
-    if (products.length === 0) {
-      dailyDealsRef.current = [];
-      setDailyDeals([]);
-      cacheDailyDeals([]);
-      return;
-    }
     const discounted = products.filter((product) => productFlags(product).onSale);
-    const nextDeals = discounted.length > 0 ? discounted : dailyDealsRef.current.length === 0 ? products : [];
-    if (nextDeals.length === 0) return;
+    if (discounted.length === 0) return;
+
+    const nextById = new Map(dailyDealsRef.current.map((product) => [product.id, product]));
+    for (const product of discounted) nextById.set(product.id, product);
+    const nextDeals = [...nextById.values()];
     dailyDealsRef.current = nextDeals;
     setDailyDeals(nextDeals);
     cacheDailyDeals(nextDeals);
@@ -394,13 +374,6 @@ export function HomePage() {
     };
   }, []);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setTimeLeft(getTimeUntilDailyReset(Date.now()));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
   const tiles = categoryTiles(catalog.categories, categoryImages);
   const deals = dailyDeals;
   const collection = [...new Map([...latestProducts, ...arrivals].map((product) => [product.id, product])).values()]
@@ -421,7 +394,6 @@ export function HomePage() {
   const visibleTrending = trendingCategoryId === "all"
     ? trendingProducts
     : trendingProducts.filter((product) => product.category?.id === trendingCategoryId);
-  const countdown = getCountdownParts(timeLeft);
   const hasHomeContent = Boolean(
     banners.length || campaigns.length || gadgetBanners.length || tiles.length || deals.length || collection.length || best.length || selectedTrending.length,
   );
@@ -506,23 +478,8 @@ export function HomePage() {
           <div className="section-head">
             <div className="deal-header-wrap">
               <div className="home-section-heading">
-                <span className="home-section-kicker">HANDPICKED FOR YOU</span>
-                <h2>Today’s best deals</h2>
-              </div>
-              <div className="countdown-box" aria-live="polite">
-                <span>Ends in</span>
-                <div className="countdown-stack">
-                  <strong>{String(countdown.hours).padStart(2, "0")}</strong>
-                  <small>H</small>
-                </div>
-                <div className="countdown-stack">
-                  <strong>{String(countdown.minutes).padStart(2, "0")}</strong>
-                  <small>M</small>
-                </div>
-                <div className="countdown-stack">
-                  <strong>{String(countdown.seconds).padStart(2, "0")}</strong>
-                  <small>S</small>
-                </div>
+                <span className="home-section-kicker">SPECIAL OFFERS</span>
+                <h2>Discounted Products</h2>
               </div>
             </div>
             <Link className="see-more" to="/shop?sort=price_asc">
