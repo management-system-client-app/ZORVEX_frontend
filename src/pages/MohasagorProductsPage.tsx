@@ -79,7 +79,7 @@ export function MohasagorProductsPage() {
                 {group.products.map((product) => {
                   const image = imageUrl(product.product_image?.find((item) => item.product_image)?.product_image ?? product.thumbnail_img);
                   const description = plainText(product.details);
-                  const price = product.reselling_price ?? product.price ?? product.sale_price;
+                  const price = product.price;
                   return (
                     <article className="mohasagor-card" key={product.id}>
                       <div className="mohasagor-card-image">
