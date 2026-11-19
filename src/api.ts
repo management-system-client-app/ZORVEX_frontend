@@ -75,8 +75,8 @@ function clearProductAndVariantCache() {
   }
 }
 
-function dispatchToast(type: "success" | "error", message: string) {
-  window.dispatchEvent(new CustomEvent("app:toast", { detail: { type, message } }));
+function dispatchToast(type: "success" | "error", message: string, login = false) {
+  window.dispatchEvent(new CustomEvent("app:toast", { detail: { type, message, login } }));
 }
 
 function mutationSuccessMessage(path: string, method: string) {
@@ -232,7 +232,9 @@ function request<T>(
       const variantMutation = /^\/variants(?:\/[^/?]+)?\/?$/i.test(path);
       if (variantMutation) clearProductAndVariantCache();
       else clearApiCache();
-      if (!options.suppressMutationToasts) dispatchToast("success", mutationSuccessMessage(path, method));
+      if (!options.suppressMutationToasts) {
+        dispatchToast("success", mutationSuccessMessage(path, method), /^\/auth\/(?:admin\/)?login$/i.test(path));
+      }
       if (/^\/products(?:\/[^/?]+)?\/?$/i.test(path)) {
         window.dispatchEvent(new Event("app:products-changed"));
       } else if (variantMutation) {
@@ -255,6 +257,7 @@ function request<T>(
         dispatchToast(
           "error",
           reason instanceof Error ? reason.message : "The action could not be completed",
+          /^\/auth\/(?:admin\/)?login$/i.test(path),
         );
       }
     }

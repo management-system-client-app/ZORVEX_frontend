@@ -229,7 +229,7 @@ export function App() {
       <RouteDocumentTitle />
       <ReloadIndicator />
       <ToastViewport />
-      <Suspense fallback={<div className="route-loading" role="status">Loading…</div>}>
+      <Suspense fallback={<div className="route-loading" role="status" aria-label="Loading page"><span className="route-loading-spinner" aria-hidden="true" /></div>}>
         <Routes>
         <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminOverview />} />
