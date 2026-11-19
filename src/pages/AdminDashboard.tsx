@@ -917,6 +917,8 @@ export function AdminOrders() {
 
 export function AdminOrderDetail() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [order, setOrder] = useState<AdminOrder | null>(null);
   const [error, setError] = useState("");
   const [next, setNext] = useState("");
@@ -933,7 +935,12 @@ export function AdminOrderDetail() {
     }).catch((reasonError) => setError(reasonError instanceof ApiError ? reasonError.message : "Order not found"));
   }, [id]);
 
-  const options = order ? NEXT_STATUS[order.status] ?? [] : [];
+  const paymentReviewPending = order?.payments?.some(
+    (payment) => ["MANUAL", "BKASH", "NAGAD", "ROCKET"].includes(payment.provider) && payment.status === "PROCESSING",
+  ) ?? false;
+  const options = order
+    ? (NEXT_STATUS[order.status] ?? []).filter((status) => status !== "CANCELLED" || !paymentReviewPending)
+    : [];
   const commissionTotal = order
     ? order.items.reduce(
         (total, item) => total + Number(item.commissionPerUnit) * item.quantity,
@@ -980,16 +987,41 @@ export function AdminOrderDetail() {
     }
   }
 
+  async function deleteOrder() {
+    if (!order || order.status !== "CANCELLED") return;
+    const confirmed = window.confirm(
+      `Permanently delete cancelled order ${order.orderNumber}? Its payment and return history will also be removed.`,
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.deleteCancelledOrder(order.id);
+      navigate("/admin/orders", { replace: true });
+    } catch (reasonError) {
+      setError(reasonError instanceof ApiError ? reasonError.message : "Could not delete the order");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (error && !order) return <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>;
   if (!order) return <DetailSkeleton />;
 
   return (
     <div className="space-y-5">
       <header className="rounded-2xl border border-slate-700 border-t-2 border-t-sky-600 bg-[#202630] p-5 shadow-sm">
-        <Link to="/admin/orders" className="group inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-[#171c24] px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors duration-200 hover:border-sky-600 hover:bg-[#242a35] hover:text-sky-200">
-          <span className="transition-transform duration-200 group-hover:-translate-x-0.5"><Icon d="M10 6 4 12l6 6M4 12h16" /></span>
-          Back to orders
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link to="/admin/orders" className="group inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-[#171c24] px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors duration-200 hover:border-sky-600 hover:bg-[#242a35] hover:text-sky-200">
+            <span className="transition-transform duration-200 group-hover:-translate-x-0.5"><Icon d="M10 6 4 12l6 6M4 12h16" /></span>
+            Back to orders
+          </Link>
+          {order.status === "CANCELLED" && user?.adminRole === "SUPER_ADMIN" ? (
+            <button type="button" disabled={busy} onClick={() => void deleteOrder()} className="rounded-lg border border-rose-700/60 bg-rose-950/30 px-3 py-1.5 text-sm font-semibold text-rose-200 transition-colors hover:bg-rose-900/50 disabled:opacity-50">
+              {busy ? "Deleting…" : "Delete cancelled order"}
+            </button>
+          ) : null}
+        </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-3">
@@ -1232,6 +1264,11 @@ export function AdminOrderDetail() {
                 </button>
               </form>
             )}
+            {paymentReviewPending ? (
+              <p className="mt-3 rounded-xl border border-amber-800/60 bg-amber-950/25 px-3 py-2 text-sm text-amber-200">
+                Payment is under review. This order can’t be cancelled until the payment is approved or rejected.
+              </p>
+            ) : null}
             </div>
           </section>
         </div>

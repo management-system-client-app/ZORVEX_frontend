@@ -627,6 +627,8 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }).then((res) => res.data),
+  deleteCancelledOrder: (id: string) =>
+    request<unknown>(`/orders/${id}`, { method: "DELETE" }).then((res) => res.data),
   recordStaffCommissionPayout: (id: string) =>
     request<AdminOrder>(`/orders/${id}/commission/paid`, { method: "PATCH" }).then((res) => res.data),
   login: async (email: string, password: string) => {
