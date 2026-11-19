@@ -458,6 +458,10 @@ export function ProductPage() {
     ? [...new Set([...(product.supplierSizes ?? []), ...extractSupplierSizes(product.description)])]
     : [];
   const unit = selected?.price != null ? Number(selected.price) : flags.price;
+  const comparePrice = selected?.compareAtPrice != null
+    ? Number(selected.compareAtPrice)
+    : flags.compare;
+  const isOnSale = comparePrice != null && comparePrice > unit;
   const available = selected ? Math.max(selected.stock - (selected.reserved ?? 0), 0) : 0;
   const selectedOptionSummary = [
     selected?.optionLabel,
@@ -597,11 +601,11 @@ export function ProductPage() {
           </div>
           <p className="product-price">
             <strong>{money(unit)}</strong>
-            {flags.compare != null ? <s>{money(flags.compare)}</s> : null}
+            {isOnSale && comparePrice != null ? <s>{money(comparePrice)}</s> : null}
           </p>
           <div className="flags" style={{ position: "static", flexDirection: "row", marginBottom: 8 }}>
             {flags.isNew ? <span className="flag">New</span> : null}
-            {flags.onSale ? <span className="flag">Sale</span> : null}
+            {isOnSale ? <span className="flag">Sale</span> : null}
           </div>
           <div className="product-meta">
             <span>SKU / Style: <strong>{selected?.sku ?? "—"}</strong></span>

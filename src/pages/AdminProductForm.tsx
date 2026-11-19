@@ -559,11 +559,12 @@ export function AdminProductForm() {
         </label>
         <label className="grid gap-1.5 text-sm">
           <span className="text-slate-500">Price</span>
-          <input className={fieldClass} required inputMode="decimal" value={basePrice} onChange={(event) => setBasePrice(event.target.value)} />
+          <input className={fieldClass} required type="number" inputMode="decimal" min="0.01" max="99999999.99" step="0.01" autoComplete="off" value={basePrice} onChange={(event) => setBasePrice(event.target.value)} />
         </label>
         <label className="grid gap-1.5 text-sm">
           <span className="text-slate-500">Compare price</span>
-          <input className={fieldClass} inputMode="decimal" value={compareAtPrice} onChange={(event) => setCompareAtPrice(event.target.value)} />
+          <input className={fieldClass} type="number" inputMode="decimal" min="0.01" max="99999999.99" step="0.01" autoComplete="off" aria-describedby="compare-price-help" value={compareAtPrice} onChange={(event) => setCompareAtPrice(event.target.value)} />
+          <span id="compare-price-help" className="text-xs text-slate-500">Optional original price; it must be higher than Price.</span>
         </label>
         {canManageStaffCommission ? (
           <label className="grid gap-1.5 text-sm">

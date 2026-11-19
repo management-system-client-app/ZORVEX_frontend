@@ -118,6 +118,7 @@ export type Variant = {
   id: string;
   sku: string;
   price: string | number | null;
+  compareAtPrice?: string | number | null;
   stock: number;
   reserved?: number;
   isActive?: boolean;

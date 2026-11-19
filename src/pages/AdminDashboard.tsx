@@ -241,7 +241,7 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [theme, setTheme] = useState<"dark" | "light">(() =>
-    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+    window.innerWidth < 900 || window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
   );
   const visibleNav = NAV.filter((link) => link.to !== "/admin/staff" || user?.adminRole === "SUPER_ADMIN");
   const [open, setOpen] = useState(false);
@@ -254,9 +254,15 @@ export function AdminLayout() {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const updateTheme = (event: MediaQueryListEvent) => setTheme(event.matches ? "dark" : "light");
+    const updateTheme = () => setTheme(
+      window.innerWidth < 900 || mediaQuery.matches ? "dark" : "light",
+    );
     mediaQuery.addEventListener("change", updateTheme);
-    return () => mediaQuery.removeEventListener("change", updateTheme);
+    window.addEventListener("resize", updateTheme);
+    return () => {
+      mediaQuery.removeEventListener("change", updateTheme);
+      window.removeEventListener("resize", updateTheme);
+    };
   }, []);
 
   useEffect(() => {
@@ -316,6 +322,9 @@ export function AdminLayout() {
             return updated;
           });
           for (const item of detected.slice(0, 3)) {
+            const toastKey = `store_admin_toast:${item.id}`;
+            if (localStorage.getItem(toastKey)) continue;
+            localStorage.setItem(toastKey, "1");
             window.dispatchEvent(new CustomEvent("app:toast", {
               detail: {
                 type: "success",
@@ -505,7 +514,7 @@ export function AdminLayout() {
                   {unreadCount > 0 ? <span className="absolute -top-1 -right-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
                 </button>
                 {notificationOpen ? (
-                  <section role="dialog" aria-label="Order notifications" className="absolute top-full right-0 z-50 mt-2 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-700 bg-[#202630] shadow-2xl">
+                  <section role="dialog" aria-label="Order notifications" className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+5rem)] z-[100] max-h-[calc(100dvh-env(safe-area-inset-top)-6rem)] overflow-hidden rounded-2xl border border-slate-700 bg-[#202630] shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:z-50 sm:mt-2 sm:max-h-[min(70dvh,480px)] sm:w-[min(360px,calc(100vw-2rem))]">
                     <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
                       <div>
                         <h2 className="text-sm font-semibold text-slate-100">Order notifications</h2>
@@ -514,7 +523,7 @@ export function AdminLayout() {
                       {unreadCount > 0 ? <button type="button" className="text-[11px] font-medium text-teal-300 hover:text-teal-200" onClick={markAllNotificationsRead}>Mark all read</button> : null}
                     </header>
                     {refreshError ? <p className="border-b border-rose-900/60 bg-rose-950/30 px-4 py-2 text-xs text-rose-200" role="alert">{refreshError}</p> : null}
-                    <div className="max-h-[min(65vh,420px)] overflow-y-auto"><AdminNotificationFeed limit={8} /></div>
+                    <div className="max-h-[calc(100dvh-env(safe-area-inset-top)-10rem)] overflow-y-auto overscroll-contain sm:max-h-[min(65dvh,420px)]"><AdminNotificationFeed limit={8} /></div>
                   </section>
                 ) : null}
               </div>
@@ -540,7 +549,7 @@ export function AdminLayout() {
               </button>
             </div>
           </header>
-          <main className="px-4 pt-3 pb-6 sm:px-6">
+          <main className="min-w-0 w-full px-3 pt-3 pb-6 sm:px-6">
             <div className="mx-auto w-full max-w-[1600px]">
               <Outlet />
             </div>
