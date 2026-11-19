@@ -43,9 +43,9 @@ export function ShopPage() {
 
   const query = useMemo(
     () => ({
-      page: "1",
-      limit: "40",
       status: "ACTIVE",
+      limit: "20",
+      page: "1",
       sort: params.get("sort") ?? "latest",
       search: params.get("search") ?? undefined,
       categoryId: params.get("categoryId") ?? undefined,

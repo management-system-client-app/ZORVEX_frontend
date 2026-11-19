@@ -161,21 +161,21 @@ function AdminNotificationFeed({ limit = 5 }: { limit?: number }) {
   }
 
   return (
-    <ul className="divide-y divide-slate-700">
+    <ul className="space-y-2 p-2">
       {notifications.slice(0, limit).map((notification) => (
-        <li key={notification.id}>
+        <li key={notification.id} className="min-w-0">
           <Link
             to={`/admin/orders/${notification.orderId}`}
             onClick={() => markRead(notification.id)}
-            className={`block px-4 py-3 transition-colors hover:bg-white/5 ${notification.read ? "" : "bg-teal-950/20"}`}
+            className={`block min-w-0 rounded-xl border px-3 py-3 transition-colors hover:bg-white/5 sm:px-4 ${notification.read ? "border-slate-700 bg-[#1b2027]" : "border-teal-900/70 bg-teal-950/25"}`}
           >
             <span className="flex items-start gap-2">
               <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${notification.read ? "bg-transparent" : "bg-teal-300"}`} aria-hidden="true" />
               <span className="min-w-0">
-                <strong className="block text-sm font-medium text-slate-100">
+                <strong className="block break-words text-sm font-medium leading-5 text-slate-100">
                   {notification.kind === "NEW_ORDER" ? "New order" : "Order cancelled"} · #{notification.orderNumber}
                 </strong>
-                <span className="mt-1 block truncate text-xs text-slate-300">{notification.customerName} · {notification.customerEmail}</span>
+                <span className="mt-1 block break-words text-xs leading-5 text-slate-300">{notification.customerName} · {notification.customerEmail}</span>
                 <time className="mt-1 block text-[10px] text-slate-500" dateTime={notification.createdAt}>
                   {new Date(notification.createdAt).toLocaleString()}
                 </time>

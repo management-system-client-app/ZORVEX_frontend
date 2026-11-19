@@ -498,9 +498,20 @@ export function Header() {
               const dismissDropdown = (event: MouseEvent<HTMLAnchorElement>) => {
                 event.currentTarget.blur();
                 setDismissedNavDropdown(item.label);
+                setMobileOpenNavDropdown(null);
               };
               const handleTopNavClick = (event: MouseEvent<HTMLAnchorElement>) => {
-                if (item.children.length > 0 && window.matchMedia("(max-width: 899px)").matches) {
+                const isMobileNav = window.matchMedia("(max-width: 899px)").matches;
+                if (isMobileNav) {
+                  window.scrollTo(0, 0);
+                }
+                if (item.children.length > 0 && isMobileNav) {
+                  if (mobileOpenNavDropdown !== item.label) {
+                    event.preventDefault();
+                    setDismissedNavDropdown(null);
+                    setMobileOpenNavDropdown(item.label);
+                    return;
+                  }
                   setMobileOpenNavDropdown(null);
                 }
                 dismissDropdown(event);
