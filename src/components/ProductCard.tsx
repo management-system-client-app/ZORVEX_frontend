@@ -126,11 +126,46 @@ export function ProductCarousel({
   useEffect(() => {
     if (!autoSlide || products.length < 2) return;
 
-    const timer = window.setInterval(() => {
-      scrollByCard(1);
-    }, 4500);
+    const row = rowRef.current;
+    if (!row || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    return () => window.clearInterval(timer);
+    let inView = !("IntersectionObserver" in window);
+    let timer: number | undefined;
+    const syncTimer = () => {
+      if (inView && document.visibilityState === "visible" && timer === undefined) {
+        timer = window.setInterval(() => scrollByCard(1), 4500);
+      } else if ((!inView || document.visibilityState !== "visible") && timer !== undefined) {
+        window.clearInterval(timer);
+        timer = undefined;
+      }
+    };
+    const observer = "IntersectionObserver" in window
+      ? new IntersectionObserver(([entry]) => {
+          inView = entry.isIntersecting;
+          syncTimer();
+        }, { rootMargin: "40px" })
+      : null;
+    observer?.observe(row);
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handleVisibilityChange = () => syncTimer();
+    const handleMotionChange = () => {
+      if (motionPreference.matches && timer !== undefined) {
+        window.clearInterval(timer);
+        timer = undefined;
+      } else {
+        syncTimer();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    motionPreference.addEventListener("change", handleMotionChange);
+    syncTimer();
+
+    return () => {
+      if (timer !== undefined) window.clearInterval(timer);
+      observer?.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      motionPreference.removeEventListener("change", handleMotionChange);
+    };
   }, [autoSlide, products.length, scrollByCard]);
 
   return (

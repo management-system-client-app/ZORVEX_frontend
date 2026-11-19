@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, Headphones, Laptop, ShieldCheck, Smartphone, Sparkles, Truck } from "lucide-react";
-import { api, DATA_REFRESH_INTERVAL, hydrateImages } from "../api";
+import { api, STOREFRONT_REFRESH_INTERVAL, hydrateImages } from "../api";
 import { categoryTiles } from "../components/Chrome";
 import { ProductCarousel } from "../components/ProductCard";
 import { productFlags } from "../format";
@@ -361,7 +361,7 @@ export function HomePage() {
           });
       }
     };
-    const timer = window.setInterval(refreshHome, DATA_REFRESH_INTERVAL);
+    const timer = window.setInterval(refreshHome, STOREFRONT_REFRESH_INTERVAL);
     window.addEventListener("focus", refreshHome);
     document.addEventListener("visibilitychange", refreshHome);
     window.addEventListener("app:products-changed", refreshHome);

@@ -20,6 +20,7 @@ type PayId = (typeof payments)[number]["id"];
 
 const DHAKA_DELIVERY_FEE = 70;
 const OUTSIDE_DHAKA_DELIVERY_FEE = 140;
+const COD_ADVANCE_AMOUNT = 130;
 
 const GUEST_CHECKOUT_ADDRESS_KEY = "bazergrid_guest_checkout_address";
 
@@ -77,7 +78,7 @@ function writeGuestCheckoutAddress(address: GuestCheckoutAddress) {
 export function CheckoutPage() {
   const { user } = useAuth();
   const { settings } = useStore();
-  const { cart, refresh, loading: cartLoading, busy: cartBusy, setQuantity } = useCart();
+  const { cart, refresh, loading: cartLoading } = useCart();
   const [form, setForm] = useState(() => ({
     shippingFullName: "",
     shippingPhone: "",
@@ -93,9 +94,9 @@ export function CheckoutPage() {
     ...readGuestCheckoutAddress(),
   }));
   const [method, setMethod] = useState<PayId>("COD");
+  const [advanceMethod, setAdvanceMethod] = useState<Exclude<PayId, "COD">>("BKASH");
   const [shipping, setShipping] = useState<number | null>(null);
   const [zone, setZone] = useState<string | null>(null);
-  const [advancePaymentAmount, setAdvancePaymentAmount] = useState<number | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [discount, setDiscount] = useState(0);
   const [discountLabel, setDiscountLabel] = useState("");
@@ -104,6 +105,7 @@ export function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [txnSubmitted, setTxnSubmitted] = useState(false);
   const [txn, setTxn] = useState("");
   const [paidNote, setPaidNote] = useState("");
   const [savedAddress, setSavedAddress] = useState<SavedAddress | null>(null);
@@ -161,7 +163,6 @@ export function CheckoutPage() {
     const city = form.shippingCity.trim();
     if (city.length < 2 || cart.items.length === 0) {
       setShipping(null);
-      setAdvancePaymentAmount(null);
       setZone(null);
       setQuoteError("");
       setQuoteLoading(false);
@@ -169,7 +170,6 @@ export function CheckoutPage() {
     }
     let active = true;
     setShipping(null);
-    setAdvancePaymentAmount(null);
     setZone(null);
     setQuoteLoading(true);
     setQuoteError("");
@@ -182,30 +182,24 @@ export function CheckoutPage() {
             const isDhakaCity = city.trim().toLocaleLowerCase() === "dhaka";
             const deliveryFee = isDhakaCity ? DHAKA_DELIVERY_FEE : OUTSIDE_DHAKA_DELIVERY_FEE;
             setShipping(deliveryFee);
-            setAdvancePaymentAmount(deliveryFee);
             setZone(isDhakaCity ? "ঢাকার ভিতরে" : "ঢাকার বাইরে");
             return;
           }
           const deliveryFee = Number(quote.shippingAmount);
-          const advance = Number(quote.advancePaymentAmount ?? deliveryFee);
           if (
             !Number.isFinite(deliveryFee) ||
-            deliveryFee < 0 ||
-            !Number.isFinite(advance) ||
-            advance < 0
+            deliveryFee < 0
           ) {
             throw new Error("ডেলিভারি চার্জের সঠিক হিসাব পাওয়া যায়নি।");
           }
           if (!active) return;
           setShipping(deliveryFee);
           setZone(quote.zoneName);
-          setAdvancePaymentAmount(advance);
         })
         .catch((reason) => {
           if (!active) return;
           setShipping(null);
           setZone(null);
-          setAdvancePaymentAmount(null);
           setQuoteError(reason instanceof Error ? reason.message : "ডেলিভারি চার্জ হিসাব করা যায়নি। আবার চেষ্টা করুন।");
         })
         .finally(() => {
@@ -325,9 +319,16 @@ export function CheckoutPage() {
       setError(quoteError || "জেলা নির্বাচন করে ডেলিভারি চার্জ হিসাব হওয়া পর্যন্ত অপেক্ষা করুন।");
       return;
     }
-    if (method === "COD" && advancePaymentAmount == null) {
-      setError("জেলা নির্বাচন করে ডেলিভারি চার্জ হিসাব হওয়া পর্যন্ত অপেক্ষা করুন।");
-      return;
+    if (method === "COD") {
+      const advanceWalletNumber = advanceMethod === "BKASH" ? settings.bkashNumber : advanceMethod === "NAGAD" ? settings.nagadNumber : settings.rocketNumber;
+      if (!advanceWalletNumber) {
+        setError("COD অগ্রিমের জন্য bKash, Nagad বা Rocket Personal নম্বর নির্বাচন করুন।");
+        return;
+      }
+      if (txn.trim().length < 4) {
+        setError("আগে অগ্রিম টাকা পাঠিয়ে Transaction ID লিখুন।");
+        return;
+      }
     }
     setBusy(true);
     try {
@@ -359,6 +360,7 @@ export function CheckoutPage() {
         email: user ? undefined : form.email,
         couponCode: user && form.couponCode.trim() ? form.couponCode.trim() : undefined,
         staffReferralId: readStaffReferralId() ?? undefined,
+        codAdvanceMethod: method === "COD" ? advanceMethod : undefined,
       });
       if (!user) {
         try {
@@ -381,6 +383,37 @@ export function CheckoutPage() {
       }
       setOrder(placed);
       clearStaffReferralId();
+      if (placed.codAdvance && placed.codAdvance.method !== "STRIPE") {
+        try {
+          await api.submitManualPayment(
+            user
+              ? { orderId: placed.id, transactionId: txn.trim() }
+              : { orderNumber: placed.orderNumber, phone: form.shippingPhone, transactionId: txn.trim() },
+          );
+          setTxnSubmitted(true);
+          setTxn("");
+          setPaidNote("লেনদেনের আইডি জমা হয়েছে। অগ্রিম পেমেন্ট যাচাই হলে অর্ডার নিশ্চিত হবে।");
+        } catch (reason) {
+          setPaidNote(reason instanceof Error ? reason.message : "লেনদেনের আইডি জমা হয়নি। আবার চেষ্টা করুন।");
+        }
+      }
+      if (placed.codAdvance?.method === "STRIPE") {
+        setCheckoutBusy(true);
+        try {
+          const checkout = await api.createCodAdvanceCheckout(
+            user
+              ? { orderId: placed.id }
+              : { orderNumber: placed.orderNumber, phone: form.shippingPhone },
+          );
+          if (!checkout.url) throw new Error("Advance payment link is unavailable.");
+          window.location.assign(checkout.url);
+          return;
+        } catch (reason) {
+          setPaidNote(reason instanceof Error ? reason.message : "অগ্রিম পেমেন্ট শুরু করা যায়নি। নিচের বাটন থেকে আবার চেষ্টা করুন।");
+        } finally {
+          setCheckoutBusy(false);
+        }
+      }
       await refresh();
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : "Could not place the order");
@@ -438,11 +471,10 @@ export function CheckoutPage() {
   }
 
   const fee = shipping ?? 0;
-  const estimatedCodAdvance = advancePaymentAmount ?? 0;
   const total = Math.max(cart.summary.subtotal - discount, 0) + fee;
-  const advanceExceedsTotal = advancePaymentAmount != null && total < advancePaymentAmount;
   const selectedWallet = method === "BKASH" ? settings.bkashNumber : method === "NAGAD" ? settings.nagadNumber : method === "ROCKET" ? settings.rocketNumber : null;
-  const wallet = order?.payTo || selectedWallet;
+  const advanceWallet = advanceMethod === "BKASH" ? settings.bkashNumber : advanceMethod === "NAGAD" ? settings.nagadNumber : settings.rocketNumber;
+  const wallet = order?.codAdvance?.payTo || order?.payTo || selectedWallet || advanceWallet;
 
   if (order) {
     const advanceProvider = order.codAdvance?.method;
@@ -515,10 +547,12 @@ export function CheckoutPage() {
           <p className="pay-amount">{money(paymentAmount)}</p>
           {order.codAdvance ? (
             <>
-              <p>Advance payment is required before this COD order is confirmed. Pay it securely online, then pay the remaining balance in cash on delivery.</p>
-              <button className="btn wide checkout-advance-pay" type="button" disabled={checkoutBusy} onClick={() => void payCodAdvance()}>
-                <CreditCard size={18} />{checkoutBusy ? "পেমেন্ট পেজ খোলা হচ্ছে..." : "অগ্রিম চার্জ পেমেন্ট করুন"}
-              </button>
+              <p>অর্ডার নিশ্চিত করতে নির্বাচিত Personal wallet-এ অগ্রিম টাকা পাঠিয়ে Transaction ID জমা দিন। বাকি টাকা ডেলিভারির সময় cash-এ দেবেন।</p>
+              {order.codAdvance.method === "STRIPE" ? (
+                <button className="btn wide checkout-advance-pay" type="button" disabled={checkoutBusy} onClick={() => void payCodAdvance()}>
+                  <CreditCard size={18} />{checkoutBusy ? "পেমেন্ট পেজ খোলা হচ্ছে..." : "অগ্রিম চার্জ পেমেন্ট করুন"}
+                </button>
+              ) : null}
             </>
           ) : null}
           {order.paymentMethod === "COD" && !order.codAdvance ? <p>Pay cash when the order arrives. The order is already in your account.</p> : null}
@@ -541,7 +575,7 @@ export function CheckoutPage() {
               Pay by card
             </button>
           ) : null}
-          {manualPayment ? (
+          {manualPayment && !txnSubmitted ? (
             <form className="merchant-payment" onSubmit={submitTxn}>
               <div className={`wallet-mark wallet-${paymentProvider.toLowerCase()}`} aria-hidden="true">
                 {paymentProvider === "BKASH" ? "bK" : paymentProvider === "NAGAD" ? "N" : "R"}
@@ -580,45 +614,19 @@ export function CheckoutPage() {
     <form className="checkout checkout-unique" onSubmit={place}>
       <div className="checkout-details">
         <header className="checkout-topbar">
-          <div className="checkout-topbar-title">
-            <h1>Checkout</h1>
+          <div className="checkout-hero-copy">
+            <span className="checkout-kicker">BAZERGRID · নিরাপদ চেকআউট</span>
+            <h1>অর্ডার সম্পন্ন করুন</h1>
+            <p>পণ্য, ডেলিভারি ঠিকানা ও পেমেন্টের তথ্য যাচাই করুন।</p>
           </div>
+          <nav className="checkout-progress" aria-label="চেকআউটের ধাপ">
+            <span className="complete"><i>✓</i> কার্ট</span>
+            <b aria-hidden="true" />
+            <span className="current"><i>২</i> ঠিকানা</span>
+            <b aria-hidden="true" />
+            <span><i>৩</i> পেমেন্ট</span>
+          </nav>
         </header>
-        <section className="checkout-products" aria-label="কার্টের পণ্য">
-          {cartLoading ? <RowsSkeleton rows={1} /> : null}
-          {!cartLoading && cart.items.map((line) => {
-            const variant = [line.variant.optionLabel, line.supplierSize ? `Size: ${line.supplierSize}` : null, ...[
-              line.variant.size?.name,
-              line.variant.color?.name,
-              line.variant.fabric?.name,
-            ]].filter(Boolean).join(" | ");
-            const quantityOptions = Array.from({ length: Math.min(5, line.availableQuantity) }, (_, index) => index + 1);
-            if (!quantityOptions.includes(line.quantity)) quantityOptions.push(line.quantity);
-            return (
-              <article className="checkout-product" key={line.id}>
-                <div className="checkout-product-image">
-                  {line.imageUrl ? <img src={line.imageUrl} alt={line.variant.product.name} /> : <ShoppingBag size={34} />}
-                </div>
-                <div className="checkout-product-copy">
-                  <strong>{line.variant.product.name}</strong>
-                  <span>{variant || "স্ট্যান্ডার্ড"}</span>
-                  <b>{money(line.unitPrice)}</b>
-                </div>
-                <label className="checkout-quantity">
-                  <span>Qty:</span>
-                  <select
-                    value={line.quantity}
-                    disabled={cartBusy}
-                    aria-label={`${line.variant.product.name} quantity`}
-                    onChange={(event) => void setQuantity(line, Number(event.target.value))}
-                  >
-                    {quantityOptions.map((quantity) => <option key={quantity} value={quantity}>{quantity}</option>)}
-                  </select>
-                </label>
-              </article>
-            );
-          })}
-        </section>
         <section className="checkout-form-section checkout-delivery-section">
         <div className="checkout-section-title"><span><MapPin size={17} /></span><div><strong>ডেলিভারি ঠিকানা</strong><small>আপনার সম্পূর্ণ ঠিকানা দিন</small></div></div>
         {user && !addressLoaded ? <RowsSkeleton rows={3} /> : null}
@@ -744,36 +752,46 @@ export function CheckoutPage() {
                   {option.id === "BKASH" && walletNumber ? `Personal · ${walletNumber}` : null}
                   {option.id === "NAGAD" && walletNumber ? walletNumber : null}
                   {option.id === "ROCKET" && walletNumber ? walletNumber : null}
-                  {option.id === "COD" ? "আগে ডেলিভারি চার্জ, বাকি টাকা পণ্য হাতে পেয়ে দিন" : null}
+                  {option.id === "COD" ? "আগে অগ্রিম দিন, বাকি টাকা পণ্য হাতে পেয়ে দিন" : null}
                 </span>
               </label>
             );
           })}
         </div>
-        <p className="checkout-payment-note" role="status">
-          {method === "COD"
-            ? "অর্ডার নিশ্চিত করার আগে ডেলিভারি চার্জ অনলাইনে দিতে হবে। বাকি পণ্যের মূল্য ক্যাশ অন ডেলিভারিতে দেবেন।"
-            : "অনলাইন পেমেন্টে অর্ডারের সম্পূর্ণ মূল্য পরিশোধ হবে।"}
-        </p>
         {method === "COD" ? (
-          <div className="checkout-cod-advance" aria-live="polite">
-            <span className="checkout-advance-icon"><CreditCard size={22} /></span>
-            <div>
-              <strong>অগ্রিম ডেলিভারি চার্জ পেমেন্ট</strong>
-              <small>
-                {quoteLoading
-                  ? "ডেলিভারি চার্জ হিসাব হচ্ছে..."
-                  : advancePaymentAmount == null
-                    ? "জেলা নির্বাচন করলে অগ্রিম চার্জ দেখানো হবে"
-                    : `এখন ${money(advancePaymentAmount)} BDT অনলাইনে পরিশোধ করুন`}
-              </small>
+          <div className="checkout-cod-advance">
+            <div className="checkout-cod-advance-header">
+              <span className="checkout-cod-advance-icon"><CreditCard size={18} /></span>
+              <div><strong>COD অগ্রিম bKash, Nagad বা Rocket Personal-এ পাঠান</strong><small>অর্ডার নিশ্চিত করতে অগ্রিম পাঠান</small></div>
+              <b>{money(COD_ADVANCE_AMOUNT)}</b>
             </div>
-            <b>{advancePaymentAmount == null ? "—" : money(advancePaymentAmount)}</b>
+            <span className="checkout-cod-advance-prompt">পেমেন্টের মাধ্যম বেছে নিন</span>
+            <div className="checkout-cod-advance-options" role="radiogroup" aria-label="COD অগ্রিম পেমেন্টের মাধ্যম">
+              {payments.filter((option) => option.id !== "COD").map((option) => {
+                const number = option.id === "BKASH" ? settings.bkashNumber : option.id === "NAGAD" ? settings.nagadNumber : settings.rocketNumber;
+                return (
+                  <label key={option.id} className={`checkout-advance-wallet${advanceMethod === option.id ? " selected" : ""}`}>
+                    <input type="radio" name="codAdvanceMethod" value={option.id} checked={advanceMethod === option.id} disabled={!number} onChange={() => setAdvanceMethod(option.id)} />
+                    <span className={`checkout-advance-wallet-mark checkout-wallet-logo-${option.id.toLowerCase()}`} aria-hidden="true">{option.id === "BKASH" ? "bK" : option.id === "NAGAD" ? "N" : "R"}</span>
+                    <span className="checkout-advance-wallet-copy"><strong>{option.label}</strong><small>{number ? `Personal · ${number}` : "নম্বর সেট করা নেই"}</small></span>
+                    <span className="checkout-advance-wallet-check" aria-hidden="true" />
+                  </label>
+                );
+              })}
+            </div>
+            <label className="checkout-cod-txn-field">
+              <span>টাকা পাঠানোর Transaction ID</span>
+              <input value={txn} onChange={(event) => setTxn(event.target.value)} required minLength={4} aria-label="টাকা পাঠানোর Transaction ID" placeholder="SMS-এ পাওয়া TrxID লিখুন" />
+              <small>টাকা পাঠানোর পর SMS-এ পাওয়া TrxID এখানে দিন।</small>
+            </label>
+            <small className="checkout-cod-advance-note">নির্বাচিত নম্বরে Send Money করে Transaction ID জমা দিন। বাকি টাকা পণ্য হাতে পেয়ে দেবেন।</small>
           </div>
         ) : null}
-        {method === "COD" && advanceExceedsTotal ? (
-          <p className="error">অর্ডারের মোট মূল্য অগ্রিম ডেলিভারি চার্জের চেয়ে বেশি হতে হবে।</p>
-        ) : null}
+        <p className="checkout-payment-note" role="status">
+          {method === "COD"
+            ? "অগ্রিম পেমেন্ট যাচাই হলে অর্ডার নিশ্চিত হবে। বাকি টাকা পণ্য হাতে পেয়ে দিন।"
+            : "অনলাইন পেমেন্টে অর্ডারের সম্পূর্ণ মূল্য পরিশোধ হবে।"}
+        </p>
         </section>
       </div>
       <aside className="summary-box checkout-summary">
@@ -808,20 +826,14 @@ export function CheckoutPage() {
           <span>{money(discount)}</span>
         </div>
         {method === "COD" ? (
-          <>
-            <div className="sub checkout-summary-row">
-              <span>অগ্রিম ডেলিভারি চার্জ</span>
-              <span>{advancePaymentAmount == null ? "—" : money(estimatedCodAdvance)}</span>
-            </div>
-            <div className="sub checkout-summary-row">
-              <span>ডেলিভারির সময় দিতে হবে</span>
-              <span>{advancePaymentAmount == null ? "—" : money(Math.max(total - estimatedCodAdvance, 0))}</span>
-            </div>
-          </>
+          <div className="sub checkout-summary-row">
+            <span>অগ্রিম (Personal payment)</span>
+            <span>{money(COD_ADVANCE_AMOUNT)}</span>
+          </div>
         ) : null}
         <div className="sub checkout-summary-total">
-          <strong>{method === "COD" ? "এখন পরিশোধ করতে হবে" : "মোট"}</strong>
-          <strong>{method === "COD" ? advancePaymentAmount == null ? "—" : money(estimatedCodAdvance) : money(total)}</strong>
+          <strong>{method === "COD" ? "ডেলিভারিতে দিতে হবে" : "মোট"}</strong>
+          <strong>{money(method === "COD" ? Math.max(total - COD_ADVANCE_AMOUNT, 0) : total)}</strong>
         </div>
         {user ? (
           <div className="news checkout-coupon">
@@ -839,7 +851,7 @@ export function CheckoutPage() {
           </div>
         ) : null}
         {error ? <p className="error checkout-error">{error}</p> : null}
-        <button className="btn wide checkout-place-order" type="submit" disabled={busy || cartLoading || cart.items.length === 0 || (Boolean(user) && !addressLoaded) || quoteLoading || shipping == null || (method === "COD" && (advancePaymentAmount == null || advanceExceedsTotal))}>
+        <button className="btn wide checkout-place-order" type="submit" disabled={busy || cartLoading || cart.items.length === 0 || (Boolean(user) && !addressLoaded) || quoteLoading || shipping == null}>
           <Check size={19} /><span>{busy ? "অর্ডার করা হচ্ছে..." : "অর্ডার নিশ্চিত করুন"}</span>
         </button>
         <div className="checkout-secure-note"><ShieldCheck size={16} /><span>আপনার তথ্য সম্পূর্ণ নিরাপদ ও সুরক্ষিত</span></div>

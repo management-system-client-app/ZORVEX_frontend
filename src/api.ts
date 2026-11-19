@@ -47,6 +47,7 @@ export const OAUTH_BASE = configuredOauthUrl
 const TOKEN_KEY = "store_token";
 const SESSION_KEY = "cart_session";
 export const DATA_REFRESH_INTERVAL = 60_000;
+export const STOREFRONT_REFRESH_INTERVAL = 5 * 60_000;
 
 const getCache = new Map<string, Envelope<unknown>>();
 const pendingGets = new Map<string, Promise<Envelope<unknown>>>();

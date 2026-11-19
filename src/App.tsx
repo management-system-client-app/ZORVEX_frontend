@@ -1,35 +1,61 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useState, type ComponentType } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { MessageCircle, Phone, X } from "lucide-react";
 import { Footer, Header } from "./components/Chrome";
-import { AccountDashboard, AccountLayout, AccountNotifications, AccountOrders, AccountProfile, AccountReturns, AccountReviews, AuthCallbackPage, ChangePasswordPage, CmsPageView, DeliveryAddressPage, ForgotPage, LoginPage, OutletsPage, RegisterPage, ResetPage, TrackPage, WishlistPage } from "./pages/AccountPages";
-import { AdminLayout, AdminOrderDetail, AdminOrders, AdminOverview, AdminProducts } from "./pages/AdminDashboard";
-import { AdminBanners, AdminCategories } from "./pages/AdminCatalog";
-import {
-  AdminCatalogExtras,
-  AdminColors,
-  AdminCoupons,
-  AdminDelivery,
-  AdminNewsletter,
-  AdminOutlets,
-  AdminPages,
-  AdminPayments,
-  AdminPromotions,
-  AdminReturns,
-  AdminSettings,
-  AdminSizeGuides,
-  AdminVariants,
-} from "./pages/AdminResources";
-import { AdminProductForm } from "./pages/AdminProductForm";
-import { AdminStaff } from "./pages/AdminStaff";
-import { CheckoutPage } from "./pages/CheckoutPage";
-import { HomePage } from "./pages/HomePage";
-import { ProductPage } from "./pages/ProductPage";
-import { MohasagorProductsPage } from "./pages/MohasagorProductsPage";
-import { ShopPage } from "./pages/ShopPage";
 import { ToastViewport } from "./components/ToastViewport";
 import { useStore } from "./state";
 import { saveStaffReferralId } from "./staffReferral";
+function lazyNamed<T extends Record<string, ComponentType<any>>>(loader: () => Promise<T>, name: keyof T) {
+  return lazy(() => loader().then((module) => ({ default: module[name] })));
+}
+
+const AccountDashboard = lazyNamed(() => import("./pages/AccountPages"), "AccountDashboard");
+const AccountLayout = lazyNamed(() => import("./pages/AccountPages"), "AccountLayout");
+const AccountNotifications = lazyNamed(() => import("./pages/AccountPages"), "AccountNotifications");
+const AccountOrders = lazyNamed(() => import("./pages/AccountPages"), "AccountOrders");
+const AccountProfile = lazyNamed(() => import("./pages/AccountPages"), "AccountProfile");
+const AccountReturns = lazyNamed(() => import("./pages/AccountPages"), "AccountReturns");
+const AccountReviews = lazyNamed(() => import("./pages/AccountPages"), "AccountReviews");
+const AuthCallbackPage = lazyNamed(() => import("./pages/AccountPages"), "AuthCallbackPage");
+const ChangePasswordPage = lazyNamed(() => import("./pages/AccountPages"), "ChangePasswordPage");
+const CmsPageView = lazyNamed(() => import("./pages/AccountPages"), "CmsPageView");
+const DeliveryAddressPage = lazyNamed(() => import("./pages/AccountPages"), "DeliveryAddressPage");
+const ForgotPage = lazyNamed(() => import("./pages/AccountPages"), "ForgotPage");
+const LoginPage = lazyNamed(() => import("./pages/AccountPages"), "LoginPage");
+const OutletsPage = lazyNamed(() => import("./pages/AccountPages"), "OutletsPage");
+const RegisterPage = lazyNamed(() => import("./pages/AccountPages"), "RegisterPage");
+const ResetPage = lazyNamed(() => import("./pages/AccountPages"), "ResetPage");
+const TrackPage = lazyNamed(() => import("./pages/AccountPages"), "TrackPage");
+const WishlistPage = lazyNamed(() => import("./pages/AccountPages"), "WishlistPage");
+const AdminLayout = lazyNamed(() => import("./pages/AdminDashboard"), "AdminLayout");
+const AdminOrderDetail = lazyNamed(() => import("./pages/AdminDashboard"), "AdminOrderDetail");
+const AdminOrders = lazyNamed(() => import("./pages/AdminDashboard"), "AdminOrders");
+const AdminOverview = lazyNamed(() => import("./pages/AdminDashboard"), "AdminOverview");
+const AdminProducts = lazyNamed(() => import("./pages/AdminDashboard"), "AdminProducts");
+const AdminBanners = lazyNamed(() => import("./pages/AdminCatalog"), "AdminBanners");
+const AdminCategories = lazyNamed(() => import("./pages/AdminCatalog"), "AdminCategories");
+const AdminCatalogExtras = lazyNamed(() => import("./pages/AdminResources"), "AdminCatalogExtras");
+const AdminColors = lazyNamed(() => import("./pages/AdminResources"), "AdminColors");
+const AdminCoupons = lazyNamed(() => import("./pages/AdminResources"), "AdminCoupons");
+const AdminDelivery = lazyNamed(() => import("./pages/AdminResources"), "AdminDelivery");
+const AdminNewsletter = lazyNamed(() => import("./pages/AdminResources"), "AdminNewsletter");
+const AdminOutlets = lazyNamed(() => import("./pages/AdminResources"), "AdminOutlets");
+const AdminPages = lazyNamed(() => import("./pages/AdminResources"), "AdminPages");
+const AdminPayments = lazyNamed(() => import("./pages/AdminResources"), "AdminPayments");
+const AdminPromotions = lazyNamed(() => import("./pages/AdminResources"), "AdminPromotions");
+const AdminReturns = lazyNamed(() => import("./pages/AdminResources"), "AdminReturns");
+const AdminSettings = lazyNamed(() => import("./pages/AdminResources"), "AdminSettings");
+const AdminSizeGuides = lazyNamed(() => import("./pages/AdminResources"), "AdminSizeGuides");
+const AdminVariants = lazyNamed(() => import("./pages/AdminResources"), "AdminVariants");
+const AdminProductForm = lazyNamed(() => import("./pages/AdminProductForm"), "AdminProductForm");
+const AdminStaff = lazyNamed(() => import("./pages/AdminStaff"), "AdminStaff");
+const CheckoutPage = lazyNamed(() => import("./pages/CheckoutPage"), "CheckoutPage");
+const HomePage = lazyNamed(() => import("./pages/HomePage"), "HomePage");
+const ProductPage = lazyNamed(() => import("./pages/ProductPage"), "ProductPage");
+const MohasagorProductsPage = lazyNamed(() => import("./pages/MohasagorProductsPage"), "MohasagorProductsPage");
+const ShopPage = lazyNamed(() => import("./pages/ShopPage"), "ShopPage");
+
+
 
 function SupportChat() {
   const { settings } = useStore();
@@ -203,7 +229,8 @@ export function App() {
       <RouteDocumentTitle />
       <ReloadIndicator />
       <ToastViewport />
-      <Routes>
+      <Suspense fallback={<div className="route-loading" role="status">Loading…</div>}>
+        <Routes>
         <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminOverview />} />
         <Route path="orders" element={<AdminOrders />} />
@@ -259,7 +286,8 @@ export function App() {
         <Route path="/pages/:slug" element={<CmsPageView />} />
         <Route path="*" element={<p className="empty">Sorry! No result.</p>} />
         </Route>
-      </Routes>
+        </Routes>
+      </Suspense>
     </>
   );
 }

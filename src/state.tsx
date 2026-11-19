@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ApiError, api, DATA_REFRESH_INTERVAL, sessionStore } from "./api";
+import { ApiError, api, STOREFRONT_REFRESH_INTERVAL, sessionStore } from "./api";
 import type { Cart, CartLine, Catalog, Category, Settings, User } from "./types";
 
 type AuthValue = {
@@ -447,7 +447,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     void refresh();
-    const timer = window.setInterval(() => void refresh(true), DATA_REFRESH_INTERVAL);
+    const timer = window.setInterval(() => void refresh(true), STOREFRONT_REFRESH_INTERVAL);
     const refreshOnFocus = () => void refresh(true);
     window.addEventListener("focus", refreshOnFocus);
     document.addEventListener("visibilitychange", refreshOnFocus);
