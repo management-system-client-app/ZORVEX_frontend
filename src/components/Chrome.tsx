@@ -300,6 +300,9 @@ export function Header() {
     .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name));
   const navLinks = [
     { label: "All Products", href: "/shop", children: [] as Category[] },
+    { label: "MAN", href: "/shop?gender=MEN", children: [] as Category[] },
+    { label: "WOMEN", href: "/shop?gender=WOMEN", children: [] as Category[] },
+    { label: "CHILD", href: "/shop?gender=KIDS", children: [] as Category[] },
     ...topLevelCategories.map((category) => ({
       label: category.name,
       href: `/shop?categoryId=${category.id}`,

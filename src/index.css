@@ -15095,3 +15095,24 @@ body:has(.checkout-unique),
   to { transform: rotate(360deg); }
 }
 
+.store-shell .home-category-section .home-category-all-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: clamp(8px, 1.2vw, 16px);
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.store-shell .home-category-section .home-category-all-row::-webkit-scrollbar {
+  display: none;
+}
+
+.store-shell .home-category-section .home-category-all-row .cat-tile {
+  flex: 0 0 clamp(78px, 9vw, 142px);
+}
+
+.store-shell .home-category-section .home-category-all-row .cat-tile[aria-label] {
+  gap: 0;
+}
+

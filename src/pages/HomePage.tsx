@@ -375,6 +375,14 @@ export function HomePage() {
   }, []);
 
   const tiles = categoryTiles(catalog.categories, categoryImages);
+  const genderTiles = [
+    { label: "MAN", gender: "MEN", pattern: /(^|[^a-z])(men|man)([^a-z]|$)|mens|punjabi|shoes/ },
+    { label: "WOMEN", gender: "WOMEN", pattern: /women|woman|fashion/ },
+    { label: "CHILD", gender: "KIDS", pattern: /kids?|children|child/ },
+  ].map((item) => ({
+    ...item,
+    image: tiles.find(({ category }) => item.pattern.test(`${category.slug} ${category.name}`.toLowerCase()))?.image ?? null,
+  }));
   const deals = dailyDeals;
   const collection = [...new Map([...latestProducts, ...arrivals].map((product) => [product.id, product])).values()]
     .slice(0, 12);
@@ -460,7 +468,15 @@ export function HomePage() {
             </div>
             <Link className="see-more" to="/shop">All categories</Link>
           </div>
-          <div className="cat-row">
+          <div className="cat-row home-category-all-row" aria-label="Explore categories">
+            {genderTiles.map(({ label, gender, image }) => (
+              <Link key={gender} to={`/shop?gender=${gender}`} className="cat-tile" aria-label={label}>
+                <div className="cat-photo">
+                  {image ? <img src={image} alt="" loading="lazy" decoding="async" /> : <div className="photo-fallback" />}
+                </div>
+                <span>{label}</span>
+              </Link>
+            ))}
             {tiles.slice(0, 8).map(({ category, image }) => (
               <Link key={category.id} to={`/shop?categoryId=${category.id}`} className="cat-tile">
                 <div className="cat-photo">
