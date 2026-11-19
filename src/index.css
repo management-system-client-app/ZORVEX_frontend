@@ -5704,7 +5704,7 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 .store-shell .checkout-unique .field input::placeholder,
 .store-shell .checkout-unique .field textarea::placeholder { color: #a0adb7; }
 .store-shell .checkout-unique .field input:hover,
-.store-shell .checkout-unique .field textarea:hover { border-color: #b8ccdc; }
+.store-shell .checkout-unique .field textarea:hover { border-color: #d4e0e9; }
 .store-shell .checkout-unique .field textarea { min-height: 92px; line-height: 1.55; }
 .store-shell .checkout-unique .field input:focus,
 .store-shell .checkout-unique .field textarea:focus { border-color: #5689b7; background: #fff; box-shadow: 0 0 0 3px rgb(40 100 168 / 11%), inset 0 1px 2px rgb(30 61 85 / 3%); outline: 0; }
@@ -5927,6 +5927,12 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
 .store-shell .checkout-cod-advance-options input { accent-color: #2864a8; }
 .store-shell .checkout-cod-advance-options .error { width: 100%; margin: 0; font-size: 11px; }
 .store-shell .checkout-cod-advance > small { color: #758590; font-size: 10px; line-height: 1.45; }
+.store-shell .checkout-unique .checkout-advance-instructions { margin: 0; color: #26344d; font-size: 14px; font-weight: 650; line-height: 1.5; }
+.store-shell .checkout-unique .checkout-advance-number { display: block; color: #111827; font-size: 17px; font-weight: 750; line-height: 1.4; }
+.store-shell .checkout-unique .checkout-advance-help { color: #34435c !important; font-size: 12px; line-height: 1.6; }
+.store-shell .checkout-unique .checkout-cod-advance .checkout-field-label { color: #26344d; font-size: 13px; font-weight: 700; }
+.store-shell .checkout-unique .checkout-cod-advance .field input { color: #111827; font-size: 15px; }
+.store-shell .checkout-unique .checkout-cod-advance .field input::placeholder { color: #596579; opacity: 1; }
 .store-shell .checkout-payment-section .pay-card {
   border-color: #dce6ed;
   background: #fff;
@@ -14933,22 +14939,72 @@ body:has(.checkout-unique),
   font-weight: 750;
 }
 .store-shell:has(.checkout-unique) .checkout-cod-txn-field input {
+  display: block;
+  visibility: visible;
+  opacity: 1;
   width: 100%;
   min-height: 42px;
   border: 1px solid #3b3b3b;
   border-radius: 8px;
   padding: 0 12px;
   background: #090909;
-  color: #fff;
-  font-size: 13px;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff;
+  caret-color: #ffc45d;
+  font-size: 14px;
+  line-height: 1.4;
 }
 .store-shell:has(.checkout-unique) .checkout-cod-txn-field input:focus {
   border-color: #e5a23b;
   box-shadow: 0 0 0 3px rgb(229 162 59 / 12%);
   outline: 0;
 }
-.store-shell:has(.checkout-unique) .checkout-cod-txn-field input::placeholder { color: #777; }
+.store-shell:has(.checkout-unique) .checkout-cod-txn-field input::placeholder { color: #aaa; opacity: 1; -webkit-text-fill-color: #aaa; }
 .store-shell:has(.checkout-unique) .checkout-cod-txn-field small { color: #888 !important; font-size: 10px; }
+.store-shell:has(.checkout-unique) .checkout-advance-transaction-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.store-shell:has(.checkout-unique) .checkout-advance-transaction-field > .checkout-advance-transaction-label {
+  position: static !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  color: #f1f1f1 !important;
+  font-size: 12px !important;
+  font-weight: 700;
+  white-space: normal !important;
+}
+.store-shell:has(.checkout-unique) .checkout-advance-transaction-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid #d99a35 !important;
+  border-radius: 9px;
+  padding: 0 13px !important;
+  background: #101820 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #ffc45d;
+  font-size: 16px !important;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.store-shell:has(.checkout-unique) .checkout-advance-transaction-input::placeholder {
+  color: #aeb8c3 !important;
+  -webkit-text-fill-color: #aeb8c3 !important;
+  opacity: 1;
+}
+.store-shell:has(.checkout-unique) .checkout-advance-transaction-input:focus {
+  border-color: #ffc45d !important;
+  box-shadow: 0 0 0 3px rgb(255 196 93 / 15%);
+  outline: 0;
+}
 
 /* Checkout responsive layout */
 @media (max-width: 980px) {

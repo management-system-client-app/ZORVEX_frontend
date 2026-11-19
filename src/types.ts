@@ -15,6 +15,7 @@ export type Settings = {
   bkashNumber: string | null;
   nagadNumber: string | null;
   rocketNumber: string | null;
+  deliveryFeePaymentNumber: string | null;
   collageManImageUrl: string | null;
   collageWomanImageUrl: string | null;
   collageChildImageUrl: string | null;
@@ -410,6 +411,7 @@ export type OrderResult = {
   subtotal?: string | number;
   discountAmount?: string | number;
   shippingAmount?: string | number;
+  deliveryAdvanceAmount?: string | number;
   currency?: string;
   status: string;
   paymentMethod: string;

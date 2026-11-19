@@ -63,7 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const result = await api.login(email, password);
     sessionStore.setToken(result.token);
-    sessionStore.setCartSession(null);
     setUser(result.user);
     sessionStore.setUserSnapshot(result.user);
     return result.user;
@@ -272,13 +271,14 @@ const fallbackSettings: Settings = {
   bkashNumber: null,
   nagadNumber: null,
   rocketNumber: null,
+  deliveryFeePaymentNumber: null,
   collageManImageUrl: null,
   collageWomanImageUrl: null,
   collageChildImageUrl: null,
   collageAccessoriesImageUrl: null,
 };
 
-const SETTINGS_CACHE_KEY = "store_settings";
+const SETTINGS_CACHE_KEY = "store_settings_v2";
 const CATALOG_CACHE_KEY = "store_catalog";
 const CATEGORIES_CACHE_KEY = "store_categories";
 const PROMO_CACHE_KEY = "store_promo";
@@ -332,6 +332,7 @@ function isSettings(value: unknown): value is Settings {
     "bkashNumber",
     "nagadNumber",
     "rocketNumber",
+    "deliveryFeePaymentNumber",
     "collageManImageUrl",
     "collageWomanImageUrl",
     "collageChildImageUrl",

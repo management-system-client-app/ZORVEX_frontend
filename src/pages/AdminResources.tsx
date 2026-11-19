@@ -1146,7 +1146,7 @@ export function AdminNewsletter() {
 
 export function AdminSettings() {
   const { user, updateProfile, saveAvatar } = useAuth();
-  const { settings, settingsReady } = useStore();
+  const { settings, settingsReady, updateSettings } = useStore();
   const [password, setPassword] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [passwordNote, setPasswordNote] = useState("");
   const [form, setForm] = useState<Settings>(settings);
@@ -1195,11 +1195,9 @@ export function AdminSettings() {
     },
     {
       title: "Payment contacts",
-      description: "Merchant account numbers shown to customers",
+      description: "The number customers use to pay the delivery fee before dispatch",
       fields: [
-        { key: "bkashNumber", label: "bKash number", type: "tel", placeholder: "01XXXXXXXXX" },
-        { key: "nagadNumber", label: "Nagad number", type: "tel", placeholder: "01XXXXXXXXX" },
-        { key: "rocketNumber", label: "Rocket number", type: "tel", placeholder: "01XXXXXXXXX" },
+        { key: "deliveryFeePaymentNumber", label: "Delivery fee payment number", type: "tel", placeholder: "01XXXXXXXXX" },
       ],
     },
   ] as const;
@@ -1220,7 +1218,9 @@ export function AdminSettings() {
               setNote("");
               setSettingsSaving(true);
               try {
-                await api.updateSettings(form);
+                const savedSettings = await api.updateSettings(form);
+                updateSettings(savedSettings);
+                setForm(savedSettings);
                 setNote("Store settings saved");
               } catch (reason) {
                 setError(messageOf(reason, "Could not save settings"));
@@ -1435,7 +1435,7 @@ export function AdminPayments() {
   }
   useEffect(load, []);
 
-  const pendingCount = items.filter((item) => item.status === "PENDING").length;
+  const pendingCount = items.filter((item) => item.status === "PROCESSING").length;
   const totalAmount = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
   return (
@@ -1473,8 +1473,8 @@ export function AdminPayments() {
               <li key={item.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-transparent px-3 py-3.5 transition-colors duration-200 hover:border-emerald-800/40 hover:bg-emerald-950/15">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-800/40 bg-emerald-950/20 text-emerald-200"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 7h18v13H3zM7 7V5h10v2m-14 5h18" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm font-semibold text-slate-100">{item.order?.orderNumber ?? item.provider}</span><span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${item.status === "PENDING" ? "border-amber-800/60 bg-amber-950/25 text-amber-200" : item.status === "APPROVED" ? "border-emerald-800/60 bg-emerald-950/25 text-emerald-200" : "border-slate-600 bg-[#202630] text-slate-300"}`}><span className={`h-1.5 w-1.5 rounded-full ${item.status === "PENDING" ? "bg-amber-300" : item.status === "APPROVED" ? "bg-emerald-300" : "bg-slate-400"}`} />{titleCaseStatus(item.status)}</span></div>
-                  <p className="mt-1 truncate text-xs text-slate-400">{item.provider}{item.transactionId ? ` · Transaction ${item.transactionId}` : " · No transaction ID"}</p>
+                  <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm font-semibold text-slate-100">{item.order?.orderNumber ?? item.provider}</span><span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${item.status === "PROCESSING" ? "border-amber-800/60 bg-amber-950/25 text-amber-200" : item.status === "PAID" ? "border-emerald-800/60 bg-emerald-950/25 text-emerald-200" : "border-slate-600 bg-[#202630] text-slate-300"}`}><span className={`h-1.5 w-1.5 rounded-full ${item.status === "PROCESSING" ? "bg-amber-300" : item.status === "PAID" ? "bg-emerald-300" : "bg-slate-400"}`} />{item.status === "PROCESSING" ? "Awaiting review" : titleCaseStatus(item.status)}</span></div>
+                  <p className="mt-1 truncate text-xs text-slate-400">{item.provider === "MANUAL" ? "Delivery fee transfer" : item.provider}{item.transactionId ? ` · Transaction ${item.transactionId}` : " · No transaction ID"}</p>
                 </div>
                 <span className="rounded-lg border border-emerald-800/50 bg-emerald-950/20 px-2.5 py-1 text-xs font-semibold text-emerald-200">{money(item.amount)}</span>
                 <div className="flex items-center gap-2">
