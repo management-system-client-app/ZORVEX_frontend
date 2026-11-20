@@ -233,7 +233,11 @@ function request<T>(
       if (variantMutation) clearProductAndVariantCache();
       else clearApiCache();
       if (!options.suppressMutationToasts) {
-        dispatchToast("success", mutationSuccessMessage(path, method), /^\/auth\/(?:admin\/)?login$/i.test(path));
+        dispatchToast(
+          "success",
+          mutationSuccessMessage(path, method),
+          /^\/auth\/(?:admin\/)?(?:login|logout)$/i.test(path) || /\/cart\/items/i.test(path),
+        );
       }
       if (/^\/products(?:\/[^/?]+)?\/?$/i.test(path)) {
         window.dispatchEvent(new Event("app:products-changed"));
@@ -523,11 +527,11 @@ export const api = {
     request<Cart>("/cart/items", { method: "POST", body: JSON.stringify(body) }).then((res) => res.data),
   removeCartItem: (itemId: string) =>
     request<Cart>(`/cart/items/${itemId}`, { method: "DELETE" }).then((res) => res.data),
-  choosePayment: (paymentMethod: Cart["paymentMethod"]) =>
+  choosePayment: (paymentMethod: Cart["paymentMethod"], options?: { suppressMutationToasts?: boolean }) =>
     request<Cart>("/cart/payment", {
       method: "POST",
       body: JSON.stringify({ paymentMethod }),
-    }).then((res) => res.data),
+    }, options).then((res) => res.data),
   quoteDelivery: (city: string, subtotal: number) =>
     request<{
       city: string;
@@ -549,11 +553,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(couponCode ? { couponCode } : {}),
     }).then((res) => res.data),
-  placeOrder: (body: Record<string, string | undefined>) =>
+  placeOrder: (body: Record<string, string | undefined>, options?: { suppressMutationToasts?: boolean }) =>
     request<OrderResult>("/orders", {
       method: "POST",
       body: JSON.stringify(body),
-    }).then((res) => res.data),
+    }, options).then((res) => res.data),
   createCodAdvanceCheckout: (body: { orderId: string } | { orderNumber: string; phone: string }) =>
     request<{ url: string; paymentId: string; amount: number; currency: string }>(
       "/payments/cod/advance/checkout",
@@ -580,9 +584,18 @@ export const api = {
         subtotal?: string | number;
         shippingAmount?: string | number;
         discountAmount?: string | number;
+        paymentMethod?: string | null;
+        shippingFullName?: string | null;
+        shippingPhone?: string | null;
+        shippingLine1?: string | null;
+        shippingLine2?: string | null;
+        shippingCity?: string | null;
+        shippingState?: string | null;
+        shippingPostalCode?: string | null;
+        shippingCountry?: string | null;
         placedAt: string;
         currency: string;
-        items?: { id: string; productName: string; quantity: number; lineTotal: string | number }[];
+        items?: { id: string; productName: string; quantity: number; lineTotal: string | number; imageUrl?: string | null; size?: string; color?: string }[];
       }[]
     >("/orders").then((res) => res.data),
   dashboard: () => request<DashboardOverview>("/dashboard").then((res) => res.data),
@@ -680,8 +693,8 @@ export const api = {
         : {}),
     })),
   defaultAddress: () => request<SavedAddress | null>("/users/me/address").then((res) => res.data),
-  saveDefaultAddress: (body: Omit<SavedAddress, "id" | "isDefault" | "label"> & { label?: string }) =>
-    request<SavedAddress>("/users/me/address", { method: "PUT", body: JSON.stringify(body) }).then((res) => res.data),
+  saveDefaultAddress: (body: Omit<SavedAddress, "id" | "isDefault" | "label"> & { label?: string }, options?: { suppressMutationToasts?: boolean; suppressErrorToast?: boolean }) =>
+    request<SavedAddress>("/users/me/address", { method: "PUT", body: JSON.stringify(body) }, options).then((res) => res.data),
   logout: () => request<unknown>("/auth/logout", { method: "POST" }).then((res) => res.data),
   wishlist: () =>
     request<

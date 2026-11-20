@@ -204,13 +204,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const remove = useCallback(async (itemId: string) => {
+    const previousCart = cart;
+    const remainingItems = cart.items.filter((item) => item.id !== itemId);
+    setCart({
+      ...cart,
+      items: remainingItems,
+      summary: {
+        itemCount: remainingItems.reduce((total, item) => total + item.quantity, 0),
+        subtotal: remainingItems.reduce((total, item) => total + item.lineTotal, 0),
+      },
+    });
     setBusy(true);
     try {
-      setCart(keepSession(await api.removeCartItem(itemId)));
+      await api.removeCartItem(itemId);
+    } catch (error) {
+      setCart(previousCart);
+      throw error;
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [cart]);
 
   const setQuantity = useCallback(async (line: CartLine, quantity: number) => {
     if (quantity === line.quantity) return;

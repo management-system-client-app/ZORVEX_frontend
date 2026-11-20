@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { coverImage, money, productFlags } from "../format";
 import { recordRecentlyViewed } from "../recentlyViewed";
+import { optimizeCloudinaryImage } from "../imageUrl";
 import type { ProductCardData } from "../types";
 
 export function ProductCard({
@@ -31,7 +32,7 @@ export function ProductCard({
       <Link to={`/product/${product.id}`} onClick={() => recordRecentlyViewed(product.id, product)}>
         <div className={`card-photo${shopCard ? " shop-card-media" : ""}`}>
           {image ? (
-            <img className="product-image" src={image} alt={product.name} loading="lazy" decoding="async" />
+            <img className="product-image" src={optimizeCloudinaryImage(image, 640)} alt={product.name} loading="lazy" decoding="async" />
           ) : <div className="photo-fallback" />}
           {dealCard ? (
             savings > 0 || flags.isNew || soldOut ? (

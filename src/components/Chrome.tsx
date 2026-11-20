@@ -655,7 +655,7 @@ function CartDrawer() {
               <div className="cart-line-details">
                 <div className="cart-line-heading">
                   <h3>{line.variant.product.name}</h3>
-                  <button type="button" className="cart-remove" disabled={busy} onClick={() => remove(line.id)} aria-label={`Remove ${line.variant.product.name}`} title="Remove item">
+                  <button type="button" className="cart-remove" disabled={busy} onClick={() => { void remove(line.id).catch(() => undefined); }} aria-label={`Remove ${line.variant.product.name}`} title="Remove item">
                     <Trash2 size={16} />
                   </button>
                 </div>

@@ -30,13 +30,8 @@ export function ShopPage() {
   const [colors, setColors] = useState<Color[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [nextPage, setNextPage] = useState(2);
   const [sheet, setSheet] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  const loadingMoreRef = useRef(false);
   const loadedQueryKeyRef = useRef<string | null>(null);
   const [minPrice, setMinPrice] = useState(params.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(params.get("maxPrice") ?? "");
@@ -44,8 +39,8 @@ export function ShopPage() {
   const query = useMemo(
     () => ({
       status: "ACTIVE",
-      limit: "20",
-      page: "1",
+      limit: "50",
+      page: params.get("page") ?? "1",
       sort: params.get("sort") ?? "latest",
       search: params.get("search") ?? undefined,
       categoryId: params.get("categoryId") ?? undefined,
@@ -124,36 +119,10 @@ export function ShopPage() {
         setError("");
       }
       try {
-        let result: { items: ProductCardData[]; meta: PageMeta };
-        if (categoryScopeIds.length > 1) {
-          const categoryResults = await Promise.all(categoryScopeIds.map((categoryId) =>
-            api.products({ ...query, categoryId, page: "1", limit: "100" }, fresh),
-          ));
-          const uniqueProducts = [...new Map(categoryResults.flatMap((page) => page.items).map((product) => [product.id, product])).values()];
-          const sort = query.sort;
-          if (sort === "price_asc" || sort === "price_desc") {
-            uniqueProducts.sort((first, second) => {
-              const difference = Number(first.price ?? first.basePrice) - Number(second.price ?? second.basePrice);
-              return sort === "price_asc" ? difference : -difference;
-            });
-          } else if (sort === "name_asc") {
-            uniqueProducts.sort((first, second) => first.name.localeCompare(second.name));
-          } else {
-            uniqueProducts.sort((first, second) => (second.createdAt ?? "").localeCompare(first.createdAt ?? ""));
-          }
-          const limit = Number(query.limit) || 40;
-          result = {
-            items: uniqueProducts,
-            meta: {
-              page: 1,
-              limit,
-              total: uniqueProducts.length,
-              totalPages: Math.max(1, ...categoryResults.map((page) => page.meta.totalPages)),
-            },
-          };
-        } else {
-          result = await api.products(query, fresh);
-        }
+        const productQuery = categoryScopeIds.length > 1
+          ? { ...query, categoryId: undefined, categoryIds: categoryScopeIds.join(",") }
+          : query;
+        const result = await api.products(productQuery, fresh);
         if (!active) return;
         const sameQuery = loadedQueryKeyRef.current === requestKey;
         setItems((current) => {
@@ -161,9 +130,7 @@ export function ShopPage() {
           const refreshedIds = new Set(result.items.map((product) => product.id));
           return [...result.items, ...current.filter((product) => !refreshedIds.has(product.id))];
         });
-        setMeta((current) => ({ ...result.meta, page: sameQuery ? current?.page ?? 1 : 1 }));
-        if (!sameQuery) setNextPage(2);
-        setHasMore(result.meta.totalPages > 1);
+        setMeta(result.meta);
         loadedQueryKeyRef.current = requestKey;
         setError("");
       } catch (reason: unknown) {
@@ -200,53 +167,6 @@ export function ShopPage() {
       window.removeEventListener("app:products-changed", refreshOnFocus);
     };
   }, [query, categoryScopeKey]);
-
-  async function loadMoreProducts() {
-    if (!hasMore || loadingMoreRef.current || loading) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
-    try {
-      const pages = categoryScopeIds.length > 1
-        ? await Promise.all(categoryScopeIds.map((categoryId) =>
-            api.products({ ...query, categoryId, page: String(nextPage), limit: "100" }, true),
-          ))
-        : [await api.products({ ...query, page: String(nextPage) }, true)];
-      const incoming = pages.flatMap((page) => page.items);
-      setItems((current) => {
-        const unique = [...new Map([...current, ...incoming].map((product) => [product.id, product])).values()];
-        if (query.sort === "price_asc" || query.sort === "price_desc") {
-          unique.sort((first, second) => {
-            const difference = Number(first.price ?? first.basePrice) - Number(second.price ?? second.basePrice);
-            return query.sort === "price_asc" ? difference : -difference;
-          });
-        } else if (query.sort === "name_asc") {
-          unique.sort((first, second) => first.name.localeCompare(second.name));
-        } else {
-          unique.sort((first, second) => (second.createdAt ?? "").localeCompare(first.createdAt ?? ""));
-        }
-        return unique;
-      });
-      const more = pages.some((page) => page.meta.page < page.meta.totalPages);
-      setHasMore(more);
-      setNextPage((current) => current + 1);
-      setMeta((current) => current ? { ...current, page: nextPage } : current);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load more products");
-    } finally {
-      loadingMoreRef.current = false;
-      setLoadingMore(false);
-    }
-  }
-
-  useEffect(() => {
-    const target = loadMoreRef.current;
-    if (!target || !hasMore || loading || loadingMore) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) void loadMoreProducts();
-    }, { rootMargin: "700px 0px" });
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [hasMore, loading, loadingMore, nextPage, query, categoryScopeKey]);
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params);
@@ -350,10 +270,16 @@ export function ShopPage() {
           {loading ? <ProductGridSkeleton /> : null}
           {!loading && items.length === 0 && !error ? <p className="empty">Sorry! No result.</p> : null}
           {!loading && items.length > 0 ? <ProductGrid products={items} shopCards /> : null}
-          {hasMore ? (
-            <div ref={loadMoreRef} className="shop-load-more" role="status" aria-label={loadingMore ? "Loading more products" : undefined}>
-              {loadingMore ? <span className="shop-load-more-spinner" aria-hidden="true" /> : null}
-            </div>
+          {!loading && meta && items.length > 0 ? (
+            <nav className="shop-pagination" aria-label="Product pages">
+              <button type="button" className="btn-line" disabled={meta.page <= 1} onClick={() => setParam("page", String(meta.page - 1))}>
+                Previous
+              </button>
+              <span>Page {meta.page} of {meta.totalPages}</span>
+              <button type="button" className="btn-line" disabled={meta.page >= meta.totalPages} onClick={() => setParam("page", String(meta.page + 1))}>
+                Next
+              </button>
+            </nav>
           ) : null}
         </div>
       </div>

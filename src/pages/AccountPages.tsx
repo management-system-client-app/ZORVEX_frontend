@@ -1,6 +1,6 @@
-import { FormEvent, type ReactNode, useEffect, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Navigate, Outlet as RouterOutlet, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BadgeCheck, Bell, Clock3, Eye, EyeOff, Heart, ImagePlus, LayoutDashboard, LogOut, MapPin, PackageCheck, PackageOpen, ShieldCheck, ShoppingBag, Star, Truck, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, Bell, CalendarDays, Clock3, CreditCard, Eye, EyeOff, Heart, ImagePlus, LayoutDashboard, LogOut, MapPin, PackageCheck, PackageOpen, ShieldCheck, ShoppingBag, Star, Truck, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { OAUTH_BASE, ApiError, api, DATA_REFRESH_INTERVAL } from "../api";
 import { AddressLocationFields } from "../components/AddressLocationFields";
@@ -1093,14 +1093,31 @@ export function DeliveryAddressPage() {
 }
 
 export function AccountOrders() {
-  const [orders, setOrders] = useState<
-    { id: string; orderNumber: string; status: string; total: string | number; placedAt: string; items?: { id: string; productName: string; quantity: number; lineTotal?: string | number }[] }[]
-  >([]);
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [trackedImages, setTrackedImages] = useState<Record<string, string | null>>({});
   const [ordersError, setOrdersError] = useState("");
   const [loading, setLoading] = useState(true);
+  const imageLookups = useRef(new Set<string>());
 
   function load() {
-    api.orders().then(setOrders).catch((reason: unknown) => {
+    api.orders().then((nextOrders) => {
+      setOrders(nextOrders);
+      if (!user?.phone) return;
+      nextOrders.forEach((order) => {
+        if (!order.items?.length || order.items.every((item) => item.imageUrl) || imageLookups.current.has(order.id)) return;
+        imageLookups.current.add(order.id);
+        void api.track(order.orderNumber, user.phone!).then((tracked) => {
+          setTrackedImages((current) => ({
+            ...current,
+            ...Object.fromEntries(tracked.items.map((item, index) => [
+              `${order.id}:${order.items?.[index]?.id ?? item.productName}`,
+              item.imageUrl,
+            ])),
+          }));
+        }).catch(() => undefined);
+      });
+    }).catch((reason: unknown) => {
       setOrders([]);
       setOrdersError(reason instanceof Error ? reason.message : "Could not load orders");
     }).finally(() => setLoading(false));
@@ -1119,7 +1136,7 @@ export function AccountOrders() {
       window.clearInterval(refreshTimer);
       document.removeEventListener("visibilitychange", onShow);
     };
-  }, []);
+  }, [user?.phone]);
 
   return (
     <section className="account-page">
@@ -1140,10 +1157,33 @@ export function AccountOrders() {
         {orders.map((order) => (
           <article className="account-surface account-order-card" key={order.id}>
             <header><div><span className="account-page-kicker">ORDER NUMBER</span><strong>{order.orderNumber}</strong></div><span className="account-order-status">{titleCaseStatus(order.status)}</span></header>
-            <p className="account-order-date">Placed {new Date(order.placedAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</p>
+            <p className="account-order-date"><CalendarDays size={14} /> Placed {new Date(order.placedAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</p>
+            <h2 className="account-order-section-label"><PackageCheck size={15} /> Items in this order</h2>
             {(order.items ?? []).map((item) => (
-              <div className="account-order-item" key={item.id}><span>{item.productName} <small>× {item.quantity}</small></span><strong>{item.lineTotal != null ? money(item.lineTotal) : ""}</strong></div>
+              <div className="account-order-item" key={item.id}>
+                {(item.imageUrl ?? trackedImages[`${order.id}:${item.id}`]) ? <img className="account-order-item-image" src={item.imageUrl ?? trackedImages[`${order.id}:${item.id}`] ?? undefined} alt={item.productName} loading="lazy" /> : <span className="account-order-item-image-placeholder" aria-hidden="true"><ShoppingBag size={17} /></span>}
+                <span className="account-order-item-copy">
+                  <strong>{item.productName}</strong>
+                  <small>{[item.size, item.color].filter(Boolean).join(" · ")} {item.quantity ? `· Qty ${item.quantity}` : ""}</small>
+                </span>
+                <strong className="account-order-item-price">{item.lineTotal != null ? money(item.lineTotal) : ""}</strong>
+              </div>
             ))}
+            <div className="account-order-details">
+              <div className="account-order-breakdown">
+                {order.subtotal != null ? <p><span>Subtotal</span><strong>{money(order.subtotal)}</strong></p> : null}
+                {order.shippingAmount != null ? <p><span>Delivery</span><strong>{money(order.shippingAmount)}</strong></p> : null}
+                {Number(order.discountAmount ?? 0) > 0 ? <p><span>Discount</span><strong>−{money(order.discountAmount!)}</strong></p> : null}
+                {order.paymentMethod ? <p><span><CreditCard size={13} /> Payment</span><strong>{titleCaseStatus(order.paymentMethod)}</strong></p> : null}
+              </div>
+              {order.shippingLine1 || order.shippingFullName ? (
+                <div className="account-order-shipping">
+                  <strong><MapPin size={13} /> Delivery address</strong>
+                  <span>{order.shippingFullName}{order.shippingPhone ? ` · ${order.shippingPhone}` : ""}</span>
+                  <span>{[order.shippingLine1, order.shippingLine2, order.shippingCity, order.shippingState, order.shippingPostalCode, order.shippingCountry].filter(Boolean).join(", ")}</span>
+                </div>
+              ) : null}
+            </div>
             <footer><span>Total</span><strong>{money(order.total)}</strong></footer>
           </article>
         ))}

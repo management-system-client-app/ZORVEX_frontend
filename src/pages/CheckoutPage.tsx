@@ -339,6 +339,7 @@ export function CheckoutPage() {
 
   async function place(event: FormEvent) {
     event.preventDefault();
+    if (busy) return;
     if (user && !addressLoaded) return;
     setError("");
     if (quoteLoading || shipping == null) {
@@ -355,8 +356,7 @@ export function CheckoutPage() {
     }
     setBusy(true);
     try {
-      if (user) {
-        await api.saveDefaultAddress({
+      const addressToSave = user ? {
           fullName: form.shippingFullName,
           phone: form.shippingPhone,
           line1: form.shippingLine1,
@@ -365,9 +365,11 @@ export function CheckoutPage() {
           state: form.shippingState || null,
           postalCode: form.shippingPostalCode,
           country: form.shippingCountry,
-        });
+        } : null;
+      if (addressToSave) {
+        void api.saveDefaultAddress(addressToSave, { suppressMutationToasts: true, suppressErrorToast: true }).catch(() => undefined);
       }
-      await api.choosePayment(method);
+      await api.choosePayment(method, { suppressMutationToasts: true });
       const placed = await api.placeOrder({
         shippingFullName: form.shippingFullName,
         shippingPhone: form.shippingPhone,
@@ -411,7 +413,7 @@ export function CheckoutPage() {
       setOrder(placed);
       setSearchParams({ order: placed.orderNumber }, { replace: true });
       clearStaffReferralId();
-      await refresh();
+      void refresh().catch(() => undefined);
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : "Could not place the order");
     } finally {
