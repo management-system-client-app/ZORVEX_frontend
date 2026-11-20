@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, Headphones, Laptop, ShieldCheck, Smartphone, Sparkles, Truck } from "lucide-react";
 import { api, STOREFRONT_REFRESH_INTERVAL, hydrateImages } from "../api";
-import { optimizeCloudinaryImage } from "../imageUrl";
 import { categoryTiles } from "../components/Chrome";
 import { ProductCarousel } from "../components/ProductCard";
 import { productFlags } from "../format";
@@ -114,7 +113,7 @@ function HomeBannerSlider({ banners }: { banners: HomeBlock[] }) {
         {isVideo ? (
           <video src={banner.imageUrl ?? undefined} autoPlay muted loop playsInline preload="metadata" />
         ) : (
-          <img src={optimizeCloudinaryImage(banner.imageUrl ?? "", 1600)} alt={banner.title} loading="eager" decoding="async" />
+          <img src={banner.imageUrl ?? undefined} alt={banner.title} loading="eager" decoding="async" />
         )}
         <span className="home-banner-caption">
           <strong>{banner.title}</strong>
@@ -134,7 +133,7 @@ function HomePromoBanner({ banner }: { banner: HomeBlock }) {
       {isVideo ? (
         <video src={banner.imageUrl ?? undefined} autoPlay muted loop playsInline preload="metadata" />
       ) : (
-        <img src={optimizeCloudinaryImage(banner.imageUrl ?? "", 1200)} alt={banner.title} loading="lazy" decoding="async" />
+        <img src={banner.imageUrl ?? undefined} alt={banner.title} loading="lazy" decoding="async" />
       )}
     </Link>
   );

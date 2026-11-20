@@ -273,7 +273,7 @@ export function ShopPage() {
           {loading ? <ProductGridSkeleton /> : null}
           {!loading && items.length === 0 && !error ? <p className="empty">Sorry! No result.</p> : null}
           {!loading && items.length > 0 ? <ProductGrid products={items} shopCards /> : null}
-          {!loading && meta && items.length > 0 ? (
+          {!loading && meta && meta.total > 50 && items.length > 0 ? (
             <nav className="shop-pagination" aria-label="Product pages">
               <button
                 type="button"

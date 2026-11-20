@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { money, productFlags } from "../format";
 import { recordRecentlyViewed } from "../recentlyViewed";
-import { optimizeCloudinaryImage } from "../imageUrl";
 import type { ProductCardData } from "../types";
 
 export function ProductCard({
@@ -46,12 +45,11 @@ export function ProductCard({
           {image ? (
             <img
               className="product-image"
-              src={optimizeCloudinaryImage(image, 640)}
+              src={image}
               alt={product.name}
               loading={prioritizeImage ? "eager" : "lazy"}
               fetchPriority={prioritizeImage ? "high" : "auto"}
               decoding="async"
-              referrerPolicy="no-referrer"
               onError={() => setImageIndex((current) => current + 1)}
             />
           ) : <div className="photo-fallback" />}
