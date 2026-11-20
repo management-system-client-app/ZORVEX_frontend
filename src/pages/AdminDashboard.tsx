@@ -313,15 +313,19 @@ export function AdminLayout() {
         setRefreshError("");
 
         if (detected.length > 0) {
-          setNotifications((current) => {
-            const existingIds = new Set(current.map((item) => item.id));
-            const added = detected.filter((item) => !existingIds.has(item.id));
-            if (added.length === 0) return current;
-            const updated = [...added, ...current].slice(0, 30);
-            saveAdminNotifications(updated);
-            return updated;
-          });
-          for (const item of detected.slice(0, 3)) {
+          const knownIds = new Set(readAdminNotifications().map((item) => item.id));
+          const newNotifications = detected.filter((item) => !knownIds.has(item.id));
+          if (newNotifications.length > 0) {
+            setNotifications((current) => {
+              const currentIds = new Set(current.map((item) => item.id));
+              const added = newNotifications.filter((item) => !currentIds.has(item.id));
+              if (added.length === 0) return current;
+              const updated = [...added, ...current].slice(0, 30);
+              saveAdminNotifications(updated);
+              return updated;
+            });
+          }
+          for (const item of newNotifications.slice(0, 3)) {
             const toastKey = `store_admin_toast:${item.id}`;
             if (localStorage.getItem(toastKey)) continue;
             localStorage.setItem(toastKey, "1");
@@ -1507,7 +1511,7 @@ export function AdminProducts() {
             <span className="rounded-lg border border-rose-800/60 bg-rose-950/25 px-2.5 py-1 text-xs text-rose-200">{lowStockProducts} low stock</span>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="bg-[#171c24] text-[11px] tracking-[0.1em] text-slate-400 uppercase">
               <tr>
@@ -1584,6 +1588,40 @@ export function AdminProducts() {
               })}
             </tbody>
           </table>
+        </div>
+        <div className="space-y-3 p-3 sm:hidden">
+          {loading ? (
+            <RowsSkeleton rows={4} columns={1} />
+          ) : items.map((product) => {
+            const stock = (product.variants ?? []).reduce((sum, variant) => sum + variant.stock, 0);
+            const image = coverImage(product);
+            return (
+              <article key={product.id} className="rounded-xl border border-slate-700 bg-[#171c24] p-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  {image ? <img src={image} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-slate-700 object-cover" /> : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-slate-700 text-sm font-semibold text-[#f0c0cf]">{product.name.slice(0, 1)}</span>}
+                  <div className="min-w-0 flex-1">
+                    <Link to={`/product/${product.id}`} className="block truncate text-sm font-medium text-slate-100">{product.name}</Link>
+                    <p className="mt-1 truncate text-xs text-slate-400">{product.category?.name ?? "Uncategorized"} · {product.brand?.name ?? "Unbranded"}</p>
+                  </div>
+                  {product.status ? <StatusBadge status={product.status} /> : null}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-slate-700 px-3 py-2">
+                    <span className="block text-[10px] uppercase tracking-wide text-slate-400">Price</span>
+                    <strong className="mt-1 block text-sm text-slate-100">{money(product.basePrice)}</strong>
+                  </div>
+                  <div className="rounded-lg border border-slate-700 px-3 py-2">
+                    <span className="block text-[10px] uppercase tracking-wide text-slate-400">Stock</span>
+                    <strong className={`mt-1 block text-sm ${stock <= 0 ? "text-rose-200" : stock <= 5 ? "text-amber-200" : "text-emerald-200"}`}>{stock}</strong>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => void openStockEditor(product.id)} className="min-h-10 flex-1 rounded-lg border border-emerald-700/70 bg-emerald-950/30 px-3 text-xs font-medium text-emerald-200">Update stock</button>
+                  <Link to={`/admin/products/${product.id}/edit${location.search}`} className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-slate-600 px-3 text-xs font-medium text-slate-300">Edit product</Link>
+                </div>
+              </article>
+            );
+          })}
         </div>
         {!loading && items.length === 0 && !error ? <div className="px-5 py-12 text-center"><span className="mx-auto grid h-11 w-11 place-items-center rounded-xl border border-slate-700 bg-[#171c24] text-slate-400"><Icon d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8" /></span><p className="mt-3 text-sm font-medium text-slate-200">No products found</p><p className="mt-1 text-xs text-slate-400">Add a product or adjust your search to see catalog results.</p></div> : null}
       </section>

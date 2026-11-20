@@ -15709,3 +15709,48 @@ body:has(.checkout-unique),
 .store-shell:has(.tracking-card) .tracking-item-copy p,
 .store-shell:has(.tracking-card) .tracking-result-total { color: #aab3be; }
 
+
+/* Keep category navigation on one line; scroll when the links need more room. */
+.store-shell .category-nav {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center;
+  height: 44px !important;
+  min-height: 44px !important;
+  overflow: hidden !important;
+}
+.store-shell .category-nav .top-nav {
+  grid-column: 2;
+  display: flex !important;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+  flex-wrap: nowrap !important;
+  justify-content: flex-start;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.store-shell .category-nav .top-nav::-webkit-scrollbar { display: none; }
+.store-shell .category-nav .top-nav > a,
+.store-shell .category-nav .top-nav .menu-item,
+.store-shell .category-nav .top-nav .menu-item > a {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+@media (max-width: 899px) {
+  .store-shell .category-nav {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding-inline: 8px !important;
+  }
+  .store-shell .category-menu-anchor,
+  .store-shell .category-nav-tools { display: none !important; }
+  .store-shell .category-nav .top-nav {
+    grid-column: 1;
+    gap: 12px !important;
+    padding-inline: 4px !important;
+  }
+}
