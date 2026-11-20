@@ -315,12 +315,26 @@ export async function hydrateImages(products: ProductCardData[]): Promise<Produc
   });
 }
 
+async function fetchAllCategories(activeOnly: boolean, fresh = false): Promise<Category[]> {
+  const categories: Category[] = [];
+  let page = 1;
+  let totalPages = 1;
+  do {
+    const params = new URLSearchParams({ limit: "100", page: String(page) });
+    if (activeOnly) params.set("isActive", "true");
+    const result = await request<Category[]>(`/categories?${params.toString()}`, {}, { fresh });
+    categories.push(...result.data);
+    totalPages = Math.max(result.meta?.totalPages ?? 1, 1);
+    page += 1;
+  } while (page <= totalPages);
+  return categories;
+}
+
 export const api = {
   settings: (fresh = false) => request<Settings>("/settings", {}, { fresh }).then((res) => res.data),
   catalog: (fresh = false) => request<Catalog>("/catalog", {}, { fresh }).then((res) => res.data),
-  categories: (fresh = false) =>
-    request<Category[]>("/categories?limit=100&isActive=true", {}, { fresh }).then((res) => res.data),
-  adminCategories: () => request<Category[]>("/categories?limit=100").then((res) => res.data),
+  categories: (fresh = false) => fetchAllCategories(true, fresh),
+  adminCategories: () => fetchAllCategories(false),
   saveCategory: async (input: Record<string, unknown>, image?: File | null, id?: string) => {
     const body = new FormData();
     body.append("data", JSON.stringify(input));

@@ -135,6 +135,9 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dismissedNavDropdown, setDismissedNavDropdown] = useState<string | null>(null);
   const [mobileOpenNavDropdown, setMobileOpenNavDropdown] = useState<string | null>(null);
+  const [visibleNavCount, setVisibleNavCount] = useState(Number.MAX_SAFE_INTEGER);
+  const topNavRef = useRef<HTMLElement>(null);
+  const navMeasureRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -310,12 +313,19 @@ export function Header() {
   const topLevelCategories = catalog.categories
     .filter((category) => !category.parentId && category.isActive !== false)
     .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name));
+  const menCategory = topLevelCategories.find((category) =>
+    [category.slug, category.name].some((value) => /^(men|man|mens|men's)(-|$)/i.test(value.trim().replace(/\s+/g, "-"))),
+  );
+  const womenCategory = topLevelCategories.find((category) =>
+    [category.slug, category.name].some((value) => /^(women|woman|womens|women's)(-|$)/i.test(value.trim().replace(/\s+/g, "-"))),
+  );
+  const linkedGenderCategories = new Set([menCategory?.id, womenCategory?.id].filter((id): id is string => Boolean(id)));
   const navLinks = [
     { label: "All Products", href: "/shop", children: [] as Category[] },
-    { label: "MAN", href: "/shop?gender=MEN", children: [] as Category[] },
-    { label: "WOMEN", href: "/shop?gender=WOMEN", children: [] as Category[] },
+    { label: menCategory?.name ?? "MAN", href: menCategory ? `/shop?categoryId=${menCategory.id}` : "/shop?gender=MEN", children: menCategory ? catalog.categories.filter((child) => child.parentId === menCategory.id && child.isActive !== false) : [] as Category[] },
+    { label: womenCategory?.name ?? "WOMEN", href: womenCategory ? `/shop?categoryId=${womenCategory.id}` : "/shop?gender=WOMEN", children: womenCategory ? catalog.categories.filter((child) => child.parentId === womenCategory.id && child.isActive !== false) : [] as Category[] },
     { label: "CHILD", href: "/shop?gender=KIDS", children: [] as Category[] },
-    ...topLevelCategories.slice(0, 4).map((category) => ({
+    ...topLevelCategories.filter((category) => !linkedGenderCategories.has(category.id)).map((category) => ({
       label: category.name,
       href: `/shop?categoryId=${category.id}`,
       children: catalog.categories
@@ -323,6 +333,42 @@ export function Header() {
         .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name)),
     })),
   ];
+  const navMeasureKey = navLinks.map((item) => item.label).join("|");
+  useEffect(() => {
+    const nav = topNavRef.current;
+    const measure = navMeasureRef.current;
+    if (!nav || !measure) return;
+    const updateVisibleCount = () => {
+      if (window.matchMedia("(max-width: 899px)").matches) {
+        setVisibleNavCount(navLinks.length);
+        return;
+      }
+      const widths = Array.from(measure.querySelectorAll<HTMLElement>("[data-nav-measure]"))
+        .slice(0, navLinks.length)
+        .map((item) => item.getBoundingClientRect().width + 2);
+      const moreWidth = (measure.querySelector<HTMLElement>("[data-nav-more-measure]")?.getBoundingClientRect().width ?? 55) + 16;
+      const gap = Number.parseFloat(getComputedStyle(nav).columnGap || getComputedStyle(nav).gap) || 0;
+      const available = nav.clientWidth;
+      let used = 0;
+      let count = 0;
+      for (const width of widths) {
+        const next = used + (count ? gap : 0) + width;
+        const remaining = widths.length - count - 1;
+        if (next + (remaining ? gap + moreWidth : 0) > available) break;
+        used = next;
+        count += 1;
+      }
+      setVisibleNavCount(count === navLinks.length ? count : Math.max(count, 1));
+    };
+    updateVisibleCount();
+    const observer = new ResizeObserver(updateVisibleCount);
+    observer.observe(nav);
+    window.addEventListener("resize", updateVisibleCount);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateVisibleCount);
+    };
+  }, [navMeasureKey]);
 
   useEffect(() => {
     if (!accountMenuOpen) return;
@@ -535,8 +581,12 @@ export function Header() {
               </>
             ) : null}
           </div>
-          <nav className="top-nav" aria-label="Shop">
-            {navLinks.map((item) => {
+          <nav className="top-nav" aria-label="Shop" ref={topNavRef}>
+            <div className="top-nav-measure" aria-hidden="true" ref={navMeasureRef}>
+              {navLinks.map((item) => <span key={item.label} data-nav-measure>{item.label}</span>)}
+              <span data-nav-more-measure>More</span>
+            </div>
+            {navLinks.slice(0, visibleNavCount).map((item) => {
               const active = item.label === "Home"
                 ? location.pathname === "/"
                 : navClass(item.href, false, location.pathname, location.search);
@@ -577,6 +627,16 @@ export function Header() {
                 </div>
               ) : link;
             })}
+            {visibleNavCount < navLinks.length ? (
+              <div className="menu-item more-menu-item" onMouseLeave={() => setDismissedNavDropdown(null)}>
+                <Link to="#" onClick={(event) => event.preventDefault()}>More</Link>
+                <div className="dropdown more-dropdown">
+                  {navLinks.slice(visibleNavCount).map((item) => (
+                    <Link key={item.label} to={item.href} onClick={() => setDismissedNavDropdown("More")}>{item.label}</Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </nav>
           <div className="category-nav-tools">
             <Link to="/track"><PackageSearch size={16} strokeWidth={1.7} />Order Tracking</Link>

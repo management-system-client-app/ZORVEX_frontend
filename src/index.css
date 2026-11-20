@@ -2821,6 +2821,15 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   }
 }
 
+/* Keep the full category navigation on one horizontal row. */
+.store-shell .category-nav .top-nav {
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+}
+.store-shell .category-nav .top-nav::-webkit-scrollbar { display: none !important; }
+
 @media (max-width: 599px) {
   .store-shell .page-container,
   .store-shell .home {
@@ -15749,6 +15758,14 @@ body:has(.checkout-unique),
   flex: 0 0 auto !important;
   white-space: nowrap !important;
 }
+.store-shell .category-nav .top-nav {
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.store-shell .category-nav .top-nav::-webkit-scrollbar { display: none; }
 @media (max-width: 899px) {
   .store-shell .category-nav {
     grid-template-columns: minmax(0, 1fr) !important;
@@ -15820,4 +15837,50 @@ body:has(.checkout-unique),
   .store-shell .category-nav .top-nav .menu-item > a {
     height: 100% !important;
   }
+}
+
+/* Fit desktop categories on one row without clipping hover dropdowns. */
+@media (min-width: 900px) {
+  .store-shell .category-nav .top-nav {
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+    gap: 2px !important;
+  }
+  .store-shell .category-nav .top-nav > a,
+  .store-shell .category-nav .top-nav .menu-item > a {
+    padding-inline: 7px !important;
+    font-size: 15px !important;
+    white-space: nowrap !important;
+  }
+}
+@media (max-width: 899px) {
+  .store-shell .category-nav .top-nav {
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+  }
+}
+.store-shell .category-nav .top-nav-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.store-shell .category-nav .top-nav-measure > span {
+  flex: 0 0 auto;
+  padding-inline: 7px;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.store-shell .category-nav .top-nav { min-width: 0 !important; max-width: 100% !important; }
+.store-shell .category-nav .more-menu-item { position: relative; }
+.store-shell .category-nav .more-menu-item > .more-dropdown {
+  right: 0;
+  left: auto;
+  width: min(390px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
 }
