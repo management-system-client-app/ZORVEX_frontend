@@ -4,7 +4,7 @@ import { ArrowRight, Clock3, MessageCircle, PackageCheck, Ruler, Store } from "l
 import { ApiError, api, DATA_REFRESH_INTERVAL, hydrateImages } from "../api";
 import { ProductGrid } from "../components/ProductCard";
 import { DetailSkeleton, ProductGridSkeleton, RowsSkeleton } from "../components/Skeleton";
-import { coverImage, extractSupplierSizes, money, productFlags } from "../format";
+import { coverImage, extractSupplierSizes, money, productFlags, productThumbnailUrl } from "../format";
 import { readRecentlyViewedIds, readRecentlyViewedProducts, recordRecentlyViewed } from "../recentlyViewed";
 import { useAuth, useCart, useStore } from "../state";
 import { isStaffReferralId, readStaffReferralId, saveStaffReferralId } from "../staffReferral";
@@ -217,9 +217,13 @@ export function ProductPage() {
       setImage(0);
       const loadRelated = async () => {
         const recommendations = new Map<string, ProductCardData>();
+        const sariPattern = /sari|saree|saari|shari|শাড়ি/i;
+        const isSari = sariPattern.test(`${next.name} ${next.category.name} ${next.category.slug}`);
+        const isRelevant = (item: ProductCardData) =>
+          item.id !== next.id && (!isSari || sariPattern.test(`${item.name} ${item.category?.name ?? ""} ${item.category?.slug ?? ""}`));
         try {
           for (const item of await api.related(id, true)) {
-            if (item.id !== next.id) recommendations.set(item.id, item);
+            if (isRelevant(item)) recommendations.set(item.id, item);
           }
         } catch (reason) {
           console.warn("Related products could not be loaded", reason);
@@ -235,10 +239,23 @@ export function ProductPage() {
               sort: "latest",
             }, true);
             for (const item of sameCategory.items) {
-              if (item.id !== next.id) recommendations.set(item.id, item);
+              if (isRelevant(item)) recommendations.set(item.id, item);
             }
           } catch (reason) {
             console.warn("Products in the same category could not be loaded", reason);
+          }
+        }
+
+        if (isSari && recommendations.size < 24) {
+          for (const term of ["sari", "saree", "শাড়ি"]) {
+            try {
+              const matches = await api.products({ search: term, status: "ACTIVE", limit: 100, page: 1, sort: "latest" }, true);
+              for (const item of matches.items) {
+                if (isRelevant(item)) recommendations.set(item.id, item);
+              }
+            } catch (reason) {
+              console.warn("Saree suggestions could not be loaded", reason);
+            }
           }
         }
 
@@ -522,7 +539,7 @@ export function ProductPage() {
           <div className="gallery-main">
             {photo ? (
               <img
-                src={photo.url}
+                src={productThumbnailUrl(photo.url) ?? photo.url}
                 alt={photo.alt || product.name}
                 onMouseMove={(event) => {
                   const bounds = event.currentTarget.parentElement?.getBoundingClientRect();
@@ -540,7 +557,7 @@ export function ProductPage() {
           <div className="thumbs">
             {gallery.map((item, index) => (
               <button key={item.id ?? item.url} type="button" className={index === image ? "on" : ""} onClick={() => setImage(index)}>
-                <img src={item.url} alt="" />
+                <img src={productThumbnailUrl(item.url) ?? item.url} alt="" loading="lazy" decoding="async" />
               </button>
             ))}
           </div>

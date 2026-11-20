@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
-import { money, productFlags } from "../format";
+import { money, productFlags, productThumbnailUrl } from "../format";
 import { recordRecentlyViewed } from "../recentlyViewed";
 import type { ProductCardData } from "../types";
 
@@ -24,7 +24,7 @@ export function ProductCard({
       product.imageUrl,
       images.find((item) => item.isPrimary)?.url,
       ...images.map((item) => item.url),
-    ].filter((url): url is string => Boolean(url)))];
+    ].map(productThumbnailUrl).filter((url): url is string => Boolean(url)))];
   }, [product.imageUrl, product.images]);
   const [imageIndex, setImageIndex] = useState(0);
   useEffect(() => setImageIndex(0), [imageCandidates]);
@@ -198,7 +198,7 @@ export function ProductCarousel({
             showAvailableStock={showAvailableStock}
             dealCard={dealCards}
             shopCard
-            prioritizeImage={index < 5}
+            prioritizeImage={index === 0}
           />
         ))}
       </div>
@@ -234,7 +234,7 @@ export function ProductGrid({ products, shopCards = true }: { products: ProductC
           key={product.id}
           product={product}
           shopCard={shopCards}
-          prioritizeImage={index < 5}
+          prioritizeImage={index === 0}
         />
       ))}
     </div>

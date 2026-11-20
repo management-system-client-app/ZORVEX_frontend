@@ -59,6 +59,21 @@ export function extractSupplierSizes(description?: string | null): string[] {
   }))];
 }
 
+export function productThumbnailUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const marker = "/image/upload/";
+  const markerIndex = value.indexOf(marker);
+  if (markerIndex < 0 || !value.includes("res.cloudinary.com")) return value;
+
+  const prefix = value.slice(0, markerIndex + marker.length);
+  const path = value.slice(markerIndex + marker.length).split("/");
+  const firstSegment = path[0] ?? "";
+  if (firstSegment.split(",").some((part) => /^(?:a|b|c|dpr|e|f|fl|g|h|q|r|w|x|y|z)_/.test(part))) {
+    path.shift();
+  }
+  return `${prefix}c_limit,w_640,h_800,f_auto,q_auto/${path.join("/")}`;
+}
+
 export function coverImage(product: {
   images?: { url: string; isPrimary?: boolean }[];
   imageUrl?: string | null;

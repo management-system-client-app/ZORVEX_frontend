@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ChevronRight, Gift, Heart, House, LayoutGrid, Mail, MapPin, Menu, Minus, PackageSearch, Phone, Plus, Search, ShoppingBag, Tags, Trash2, UserRound, X } from "lucide-react";
 import { api } from "../api";
 import { RowsSkeleton } from "./Skeleton";
-import { coverImage, money, productFlags } from "../format";
+import { coverImage, money, productFlags, productThumbnailUrl } from "../format";
 import { categoryImage, useAuth, useCart, useStore } from "../state";
 import type { Category, ProductCardData, User } from "../types";
 
@@ -358,7 +358,7 @@ export function Header() {
                 {suggestionsLoading ? <p className="search-suggestions-state">Searching products...</p> : suggestions.length > 0 ? <>
                   {fuzzySuggestions ? <p className="search-suggestions-state">Closest matches for your spelling</p> : null}
                   {suggestions.map((product, index) => {
-                  const image = coverImage(product);
+                  const image = productThumbnailUrl(coverImage(product));
                   return (
                     <button
                       type="button"
