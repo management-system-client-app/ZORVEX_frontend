@@ -64,6 +64,31 @@ function buyerEmail(order: AdminOrder) {
   return order.user?.email ?? order.guestEmail ?? "Guest checkout";
 }
 
+const isAnondoRay = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase() === "anondo ray";
+
+function playOrderNotificationSound() {
+  try {
+    const context = new AudioContext();
+    const now = context.currentTime;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.11, now + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+    gain.connect(context.destination);
+    for (const [frequency, start] of [[880, 0], [1175, 0.14]] as const) {
+      const oscillator = context.createOscillator();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, now + start);
+      oscillator.connect(gain);
+      oscillator.start(now + start);
+      oscillator.stop(now + start + 0.19);
+    }
+    window.setTimeout(() => void context.close().catch(() => undefined), 600);
+  } catch {
+    // Browser audio may be unavailable or blocked by autoplay settings.
+  }
+}
+
 type AdminNotification = {
   id: string;
   kind: "NEW_ORDER" | "ORDER_CANCELLED";
@@ -117,7 +142,7 @@ function readAdminNotifications(): AdminNotification[] {
       typeof item.createdAt === "string" &&
       "read" in item &&
       typeof item.read === "boolean",
-    ).slice(0, 30);
+    ).filter((item) => item.kind !== "NEW_ORDER" || !isAnondoRay(item.customerName)).slice(0, 30);
   } catch (reason) {
     console.warn("Admin notifications could not be read", reason);
     return [];
@@ -290,6 +315,7 @@ export function AdminLayout() {
           nextSnapshot[order.id] = order.status;
           const previousStatus = prior[order.id];
           const addNotification = (kind: AdminNotification["kind"]) => {
+            if (kind === "NEW_ORDER" && (isAnondoRay(buyer(order)) || (user.email && buyerEmail(order).toLowerCase() === user.email.toLowerCase()))) return;
             detected.push({
               id: `${kind}:${order.id}`,
               kind,
@@ -316,6 +342,7 @@ export function AdminLayout() {
           const knownIds = new Set(readAdminNotifications().map((item) => item.id));
           const newNotifications = detected.filter((item) => !knownIds.has(item.id));
           if (newNotifications.length > 0) {
+            if (newNotifications.some((item) => item.kind === "NEW_ORDER")) playOrderNotificationSound();
             setNotifications((current) => {
               const currentIds = new Set(current.map((item) => item.id));
               const added = newNotifications.filter((item) => !currentIds.has(item.id));
@@ -325,16 +352,14 @@ export function AdminLayout() {
               return updated;
             });
           }
-          for (const item of newNotifications.slice(0, 3)) {
+          for (const item of newNotifications.filter((notification) => notification.kind === "NEW_ORDER").slice(0, 3)) {
             const toastKey = `store_admin_toast:${item.id}`;
             if (localStorage.getItem(toastKey)) continue;
             localStorage.setItem(toastKey, "1");
             window.dispatchEvent(new CustomEvent("app:toast", {
               detail: {
                 type: "success",
-                message: item.kind === "NEW_ORDER"
-                  ? `New order #${item.orderNumber} from ${item.customerName}`
-                  : `Order #${item.orderNumber} cancelled · Customer: ${item.customerName}`,
+                message: `New order #${item.orderNumber} from ${item.customerName}`,
               },
             }));
           }
@@ -368,7 +393,7 @@ export function AdminLayout() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener("storage", syncNotifications);
     };
-  }, [user?.accountType, user?.id]);
+  }, [user?.accountType, user?.email, user?.id]);
 
   useEffect(() => {
     setNotificationOpen(false);
