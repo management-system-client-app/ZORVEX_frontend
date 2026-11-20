@@ -365,8 +365,8 @@ export const api = {
     })),
   bestSellers: (fresh = false) => request<ProductCardData[]>("/products/best-sellers", {}, { fresh }).then((res) => res.data),
   productSuggestions: (search: string) => request<ProductCardData[]>(`/products/suggestions${qs({ search })}`).then((res) => res.data),
-  related: (id: string) =>
-    request<ProductCardData[]>(`/products/${id}/related`).then((res) => res.data),
+  related: (id: string, fresh = false) =>
+    request<ProductCardData[]>(`/products/${id}/related`, {}, { fresh }).then((res) => res.data),
   product: (id: string, fresh = false) =>
     request<ProductDetail>(`/products/${id}`, {}, { fresh }).then((res) => res.data),
   deleteProductImage: (productId: string, imageId: string) =>

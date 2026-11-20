@@ -218,19 +218,19 @@ export function ProductPage() {
       const loadRelated = async () => {
         const recommendations = new Map<string, ProductCardData>();
         try {
-          for (const item of await api.related(id)) {
+          for (const item of await api.related(id, true)) {
             if (item.id !== next.id) recommendations.set(item.id, item);
           }
         } catch (reason) {
           console.warn("Related products could not be loaded", reason);
         }
 
-        if (recommendations.size < 4) {
+        if (recommendations.size < 24) {
           try {
             const sameCategory = await api.products({
               status: "ACTIVE",
               categoryId: next.category.id,
-              limit: 20,
+              limit: 100,
               page: 1,
               sort: "latest",
             }, true);
@@ -242,50 +242,7 @@ export function ProductPage() {
           }
         }
 
-        if (recommendations.size < 4) {
-          try {
-            const latest = await api.products({
-              status: "ACTIVE",
-              limit: 20,
-              page: 1,
-              sort: "latest",
-            }, true);
-            for (const item of latest.items) {
-              if (item.id !== next.id) recommendations.set(item.id, item);
-            }
-          } catch (reason) {
-            console.warn("Latest products could not be loaded for recommendations", reason);
-          }
-        }
-
-        if (recommendations.size < 4) {
-          try {
-            const home = await api.home(true);
-            const homeProducts = [
-              ...home.trendingProducts,
-              ...home.newArrivals.flatMap((block) => block.products ?? []),
-              ...home.campaigns.flatMap((block) => block.products ?? []),
-              ...(home.gadgetBanners ?? []).flatMap((block) => block.products ?? []),
-            ];
-            for (const item of homeProducts) {
-              if (item.id !== next.id) recommendations.set(item.id, item);
-            }
-          } catch (reason) {
-            console.warn("Home products could not be loaded for recommendations", reason);
-          }
-        }
-
-        if (recommendations.size < 4) {
-          try {
-            for (const item of await api.bestSellers(true)) {
-              if (item.id !== next.id) recommendations.set(item.id, item);
-            }
-          } catch (reason) {
-            console.warn("Best-selling products could not be loaded for recommendations", reason);
-          }
-        }
-
-        const products = await hydrateImages([...recommendations.values()].slice(0, 8));
+        const products = await hydrateImages([...recommendations.values()].slice(0, 24));
         if (active) {
           setRelated(products);
           setRelatedLoading(false);
