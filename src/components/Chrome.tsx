@@ -130,6 +130,7 @@ export function Header() {
   const [suggestions, setSuggestions] = useState<ProductCardData[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [fuzzySuggestions, setFuzzySuggestions] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dismissedNavDropdown, setDismissedNavDropdown] = useState<string | null>(null);
@@ -220,12 +221,22 @@ export function Header() {
 
     let active = true;
     setSuggestions([]);
+    setFuzzySuggestions(false);
     setSuggestionsLoading(true);
     setActiveSuggestion(-1);
     const timer = window.setTimeout(() => {
       api.products({ search: term, status: "ACTIVE", limit: 6, page: 1 })
-        .then(({ items }) => {
-          if (active) setSuggestions(items);
+        .then(async ({ items }) => {
+          if (!active) return;
+          if (items.length > 0 || term.length < 3) {
+            setSuggestions(items);
+            return;
+          }
+          const closeMatches = await api.productSuggestions(term);
+          if (active) {
+            setSuggestions(closeMatches);
+            setFuzzySuggestions(closeMatches.length > 0);
+          }
         })
         .catch(() => {
           if (active) setSuggestions([]);
@@ -243,8 +254,8 @@ export function Header() {
 
   function onSearch(event: FormEvent) {
     event.preventDefault();
-    if (suggestionsOpen && activeSuggestion >= 0) {
-      const selected = suggestions[activeSuggestion];
+    if (suggestionsOpen && (activeSuggestion >= 0 || (fuzzySuggestions && suggestions.length > 0))) {
+      const selected = suggestions[activeSuggestion >= 0 ? activeSuggestion : 0];
       if (selected) {
         navigate(`/product/${selected.id}`);
         setSearchOpen(false);
@@ -344,7 +355,9 @@ export function Header() {
             {searchError ? <p className="header-search-error" id="header-search-error" role="alert">{searchError}</p> : null}
             {suggestionsOpen && query.trim() ? (
               <div className="search-suggestions" id="header-search-suggestions" role="listbox" aria-label="Product suggestions">
-                {suggestionsLoading ? <p className="search-suggestions-state">Searching products...</p> : suggestions.length > 0 ? suggestions.map((product, index) => {
+                {suggestionsLoading ? <p className="search-suggestions-state">Searching products...</p> : suggestions.length > 0 ? <>
+                  {fuzzySuggestions ? <p className="search-suggestions-state">Closest matches for your spelling</p> : null}
+                  {suggestions.map((product, index) => {
                   const image = coverImage(product);
                   return (
                     <button
@@ -365,7 +378,8 @@ export function Header() {
                       <span className="search-suggestion-price">{money(productFlags(product).price)}</span>
                     </button>
                   );
-                }) : <p className="search-suggestions-state">No matching products</p>}
+                })}
+                </> : <p className="search-suggestions-state">No matching products</p>}
               </div>
             ) : null}
             <button type="submit" aria-label="Search">

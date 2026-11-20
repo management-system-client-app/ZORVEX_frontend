@@ -364,6 +364,7 @@ export const api = {
       meta: res.meta ?? { page, limit: res.data.length, total: res.data.length, totalPages: 1 },
     })),
   bestSellers: (fresh = false) => request<ProductCardData[]>("/products/best-sellers", {}, { fresh }).then((res) => res.data),
+  productSuggestions: (search: string) => request<ProductCardData[]>(`/products/suggestions${qs({ search })}`).then((res) => res.data),
   related: (id: string) =>
     request<ProductCardData[]>(`/products/${id}/related`).then((res) => res.data),
   product: (id: string, fresh = false) =>
