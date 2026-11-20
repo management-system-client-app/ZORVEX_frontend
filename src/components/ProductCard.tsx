@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
-import { coverImage, money, productFlags } from "../format";
+import { money, productFlags } from "../format";
 import { recordRecentlyViewed } from "../recentlyViewed";
 import { optimizeCloudinaryImage } from "../imageUrl";
 import type { ProductCardData } from "../types";
@@ -11,13 +11,25 @@ export function ProductCard({
   showAvailableStock = false,
   dealCard = false,
   shopCard = false,
+  prioritizeImage = false,
 }: {
   product: ProductCardData;
   showAvailableStock?: boolean;
   dealCard?: boolean;
   shopCard?: boolean;
+  prioritizeImage?: boolean;
 }) {
-  const image = coverImage(product);
+  const imageCandidates = useMemo(() => {
+    const images = product.images ?? [];
+    return [...new Set([
+      product.imageUrl,
+      images.find((item) => item.isPrimary)?.url,
+      ...images.map((item) => item.url),
+    ].filter((url): url is string => Boolean(url)))];
+  }, [product.imageUrl, product.images]);
+  const [imageIndex, setImageIndex] = useState(0);
+  useEffect(() => setImageIndex(0), [imageCandidates]);
+  const image = imageCandidates[imageIndex] ?? null;
   const flags = productFlags(product);
   const discount = flags.compare != null ? Math.round(((flags.compare - flags.price) / flags.compare) * 100) : null;
   const savings = flags.compare != null ? flags.compare - flags.price : 0;
@@ -32,7 +44,16 @@ export function ProductCard({
       <Link to={`/product/${product.id}`} onClick={() => recordRecentlyViewed(product.id, product)}>
         <div className={`card-photo${shopCard ? " shop-card-media" : ""}`}>
           {image ? (
-            <img className="product-image" src={optimizeCloudinaryImage(image, 640)} alt={product.name} loading="lazy" decoding="async" />
+            <img
+              className="product-image"
+              src={optimizeCloudinaryImage(image, 640)}
+              alt={product.name}
+              loading={prioritizeImage ? "eager" : "lazy"}
+              fetchPriority={prioritizeImage ? "high" : "auto"}
+              decoding="async"
+              referrerPolicy="no-referrer"
+              onError={() => setImageIndex((current) => current + 1)}
+            />
           ) : <div className="photo-fallback" />}
           {dealCard ? (
             savings > 0 || flags.isNew || soldOut ? (
@@ -172,13 +193,14 @@ export function ProductCarousel({
   return (
     <div className="product-carousel">
       <div className="product-row" ref={rowRef}>
-        {products.map((product) => (
+        {products.map((product, index) => (
           <ProductCard
             key={product.id}
             product={product}
             showAvailableStock={showAvailableStock}
             dealCard={dealCards}
             shopCard
+            prioritizeImage={index < 5}
           />
         ))}
       </div>
@@ -209,8 +231,13 @@ export function ProductCarousel({
 export function ProductGrid({ products, shopCards = true }: { products: ProductCardData[]; shopCards?: boolean }) {
   return (
     <div className="product-grid">
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} shopCard={shopCards} />
+      {products.map((product, index) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          shopCard={shopCards}
+          prioritizeImage={index < 5}
+        />
       ))}
     </div>
   );
