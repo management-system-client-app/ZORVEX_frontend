@@ -35,8 +35,9 @@ export function groupMohasagorProducts(products: MohasagorProduct[], storeCatego
 
   const groups = new Map<string, MohasagorProduct[]>();
   for (const product of products) {
+    const apiCategory = product.category?.trim();
     const type = categoryForText(`${product.name} ${product.details ?? ""}`);
-    const category = storeNamesByType.get(type) ?? type;
+    const category = apiCategory || storeNamesByType.get(type) || type;
     const items = groups.get(category) ?? [];
     items.push(product);
     groups.set(category, items);

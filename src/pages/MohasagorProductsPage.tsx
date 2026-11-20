@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { money } from "../format";
 import type { MohasagorProduct, PageMeta } from "../types";
@@ -25,6 +26,7 @@ function plainText(html?: string | null): string {
 
 export function MohasagorProductsPage() {
   const { catalog } = useStore();
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<MohasagorProduct[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [page, setPage] = useState(1);
@@ -73,6 +75,10 @@ export function MohasagorProductsPage() {
   }, [page]);
 
   const productGroups = groupMohasagorProducts(products, catalog.categories);
+  const selectedCategory = searchParams.get("category");
+  const visibleProductGroups = selectedCategory
+    ? productGroups.filter((group) => group.category === selectedCategory)
+    : productGroups;
 
   useEffect(() => {
     const target = loadMoreRef.current;
@@ -89,6 +95,16 @@ export function MohasagorProductsPage() {
 
   return (
     <main className="mohasagor-page">
+      {!loading && !error && visibleProductGroups.length > 0 ? (
+        <nav className="mohasagor-category-nav" aria-label="Mohasagor product categories">
+          <Link to="/mohasagor">All categories</Link>
+          {productGroups.map((group) => (
+            <Link key={group.category} to={`/mohasagor?category=${encodeURIComponent(group.category)}`}>
+              {group.category}<span>{group.products.length}</span>
+            </Link>
+          ))}
+        </nav>
+      ) : null}
       <header className="mohasagor-heading">
         <div>
           <span>SUPPLIER COLLECTION</span>
@@ -103,12 +119,13 @@ export function MohasagorProductsPage() {
       {!loading && !error && products.length === 0 ? <p className="mohasagor-message">No products are available right now.</p> : null}
       {!loading && !error && products.length > 0 ? (
         <div className="mohasagor-categories">
-          {productGroups.map((group) => (
-            <section className="mohasagor-category-section" key={group.category}>
+          {visibleProductGroups.map((group) => (
+            <section className="mohasagor-category-section" id={group.category} key={group.category}>
               <header><h2>{group.category}</h2><span>{group.products.length} products</span></header>
               <div className="mohasagor-grid">
                 {group.products.map((product) => {
-                  const image = imageUrl(product.product_image?.find((item) => item.product_image)?.product_image ?? product.thumbnail_img);
+                  const images = product.product_images ?? product.product_image;
+                  const image = imageUrl(images?.find((item) => item.product_image)?.product_image ?? product.thumbnail_img);
                   const description = plainText(product.details);
                   const price = product.price;
                   return (

@@ -136,6 +136,7 @@ export function Header() {
   const [dismissedNavDropdown, setDismissedNavDropdown] = useState<string | null>(null);
   const [mobileOpenNavDropdown, setMobileOpenNavDropdown] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [wishlistCount, setWishlistCount] = useState(0);
 
@@ -314,7 +315,7 @@ export function Header() {
     { label: "MAN", href: "/shop?gender=MEN", children: [] as Category[] },
     { label: "WOMEN", href: "/shop?gender=WOMEN", children: [] as Category[] },
     { label: "CHILD", href: "/shop?gender=KIDS", children: [] as Category[] },
-    ...topLevelCategories.map((category) => ({
+    ...topLevelCategories.slice(0, 4).map((category) => ({
       label: category.name,
       href: `/shop?categoryId=${category.id}`,
       children: catalog.categories
@@ -322,6 +323,31 @@ export function Header() {
         .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name)),
     })),
   ];
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false);
+      }
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [accountMenuOpen]);
+
+  useEffect(() => {
+    setAccountMenuOpen(false);
+  }, [location.pathname]);
+
   const bottomNavOverlayOpen = menuOpen || accountMenuOpen || drawer;
 
   return (
@@ -421,20 +447,26 @@ export function Header() {
               {cart.summary.itemCount > 0 ? <span className="badge">{cart.summary.itemCount}</span> : null}
             </button>
             {user ? (
-              <div className="header-account-wrap">
-                <div className="account-chip header-account-profile" tabIndex={0} role="group" aria-label="Account options">
+              <div className="header-account-wrap" ref={accountMenuRef}>
+                <button
+                  type="button"
+                  className="account-chip header-account-profile"
+                  aria-label="Account options"
+                  aria-expanded={accountMenuOpen}
+                  onClick={() => setAccountMenuOpen((open) => !open)}
+                >
                   <UserFace user={user} size={40} />
                   <span className="header-account-profile-copy">
                     <strong>{`${user.firstName} ${user.lastName}`.trim()}</strong>
                     <small>{user.phone || user.email}</small>
                   </span>
-                </div>
+                </button>
                 <nav className="header-account-dropdown" aria-label="Account menu">
                   <Link to={user.accountType === "ADMIN" ? "/admin" : "/account"}>Dashboard</Link>
                   <Link to={user.accountType === "ADMIN" ? "/admin/orders" : "/account/orders"}>My Orders</Link>
                   <Link to={user.accountType === "ADMIN" ? "/admin/settings" : "/account/profile"}>My Account</Link>
                   <Link to="/track">Order Tracking</Link>
-                  <button type="button" onClick={() => { logout().then(() => navigate("/")); }}>Logout</button>
+                  <button type="button" onClick={() => { setAccountMenuOpen(false); logout().then(() => navigate("/")); }}>Logout</button>
                 </nav>
               </div>
             ) : !ready ? (

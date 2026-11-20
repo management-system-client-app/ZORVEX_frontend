@@ -100,6 +100,7 @@ export type ProductCardData = {
 export type MohasagorProduct = {
   id: number | string;
   name: string;
+  category?: string | null;
   slug?: string | null;
   details?: string | null;
   category_id?: number | string | null;
@@ -111,6 +112,7 @@ export type MohasagorProduct = {
   reselling_price?: number | string | null;
   product_variants?: { attribute?: string | null; variant?: string | null }[];
   product_image?: { id?: number | string; product_image?: string | null }[];
+  product_images?: { id?: number | string; product_image?: string | null }[];
   thumbnail_img?: string | null;
   status?: number | string;
 };

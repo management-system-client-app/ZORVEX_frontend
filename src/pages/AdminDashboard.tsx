@@ -111,6 +111,7 @@ type AdminNotificationContextValue = {
 const ADMIN_NOTIFICATIONS_KEY = "store_admin_order_notifications";
 const ADMIN_ORDER_SNAPSHOT_KEY = "store_admin_order_snapshot";
 const NOTIFICATION_POLL_INTERVAL = 30_000;
+const NEW_ORDER_ALERT_MAX_AGE_MS = 30 * 60_000;
 const AdminNotificationContext = createContext<AdminNotificationContextValue>({
   notifications: [],
   unreadCount: 0,
@@ -323,11 +324,18 @@ export function AdminLayout() {
               orderNumber: order.orderNumber,
               customerName: buyer(order).trim() || "Customer",
               customerEmail: buyerEmail(order),
-              createdAt: new Date().toISOString(),
+              createdAt: kind === "NEW_ORDER" ? order.placedAt : new Date().toISOString(),
               read: false,
             });
           };
-          if (hasBaseline && previousStatus === undefined) addNotification("NEW_ORDER");
+          const orderAgeMs = Date.now() - Date.parse(order.placedAt);
+          if (
+            hasBaseline &&
+            previousStatus === undefined &&
+            Number.isFinite(orderAgeMs) &&
+            orderAgeMs >= 0 &&
+            orderAgeMs <= NEW_ORDER_ALERT_MAX_AGE_MS
+          ) addNotification("NEW_ORDER");
           if (hasBaseline && previousStatus !== "CANCELLED" && order.status === "CANCELLED") {
             addNotification("ORDER_CANCELLED");
           }
