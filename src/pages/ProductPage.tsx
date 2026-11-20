@@ -219,8 +219,12 @@ export function ProductPage() {
         const recommendations = new Map<string, ProductCardData>();
         const sariPattern = /sari|saree|saari|shari|শাড়ি/i;
         const isSari = sariPattern.test(`${next.name} ${next.category.name} ${next.category.slug}`);
-        const isRelevant = (item: ProductCardData) =>
-          item.id !== next.id && (!isSari || sariPattern.test(`${item.name} ${item.category?.name ?? ""} ${item.category?.slug ?? ""}`));
+        const isRelevant = (item: ProductCardData) => {
+          const brandName = item.brand?.name?.trim() ?? "";
+          const hasBrand = brandName.length > 0 && brandName.toLowerCase() !== "none";
+          const hasFabric = item.variants?.some((variant) => Boolean(variant.fabricId)) ?? false;
+          return item.id !== next.id && hasBrand && hasFabric && (!isSari || sariPattern.test(`${item.name} ${item.category?.name ?? ""} ${item.category?.slug ?? ""}`));
+        };
         try {
           for (const item of await api.related(id, true)) {
             if (isRelevant(item)) recommendations.set(item.id, item);

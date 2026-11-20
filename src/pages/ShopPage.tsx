@@ -205,7 +205,7 @@ export function ShopPage() {
   const crumb = category?.name ?? gender?.label ?? (params.get("search") ? `Search: ${params.get("search")}` : "Shop");
   const activeFilterCount = ["categoryId", "brandId", "gender", "sizeId", "colorId", "fabricId", "minPrice", "maxPrice", "inStock"]
     .filter((key) => params.has(key)).length;
-  const fabricsWithProducts = catalog.fabrics;
+  const fabricsWithProducts = (meta?.total ?? 0) > 0 ? catalog.fabrics : [];
   const pageCount = Math.max(meta?.totalPages ?? 1, 1);
   const firstVisiblePage = Math.min(Math.max((meta?.page ?? 1) - 3, 1), Math.max(pageCount - 6, 1));
   const visiblePages = Array.from({ length: Math.min(pageCount, 7) }, (_, index) => firstVisiblePage + index);

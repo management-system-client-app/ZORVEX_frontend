@@ -89,6 +89,7 @@ export type ProductCardData = {
   variants?: {
     stock: number;
     reserved?: number;
+    fabricId?: string | null;
     isActive?: boolean;
     optionLabel?: string | null;
     size?: { id: string; name: string } | null;
