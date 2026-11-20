@@ -14469,9 +14469,20 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   gap: 14px;
   margin: 28px 0;
 }
-.shop-pagination > span { color: var(--muted); font-size: 14px; }
-.shop-pagination .btn-line { min-width: 96px; padding: 9px 14px; border-color: var(--line); color: var(--ink); border-radius: 8px; }
-.shop-pagination .btn-line:disabled { opacity: .45; cursor: not-allowed; }
+.shop-pagination button {
+  display: inline-grid;
+  min-width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 14px;
+}
+.shop-pagination button.page-number.active { border-color: #2864a8; background: #2864a8; color: #fff; font-weight: 700; }
+.shop-pagination button:disabled { opacity: .4; cursor: not-allowed; }
+.shop-pagination .page-arrow { font-size: 22px; }
 @keyframes shop-load-spin {
   to { transform: rotate(360deg); }
 }

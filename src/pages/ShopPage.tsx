@@ -206,6 +206,9 @@ export function ShopPage() {
   const activeFilterCount = ["categoryId", "brandId", "gender", "sizeId", "colorId", "fabricId", "minPrice", "maxPrice", "inStock"]
     .filter((key) => params.has(key)).length;
   const fabricsWithProducts = catalog.fabrics;
+  const pageCount = Math.max(meta?.totalPages ?? 1, 1);
+  const firstVisiblePage = Math.min(Math.max((meta?.page ?? 1) - 3, 1), Math.max(pageCount - 6, 1));
+  const visiblePages = Array.from({ length: Math.min(pageCount, 7) }, (_, index) => firstVisiblePage + index);
 
   const filterProps = {
     catalog,
@@ -272,12 +275,35 @@ export function ShopPage() {
           {!loading && items.length > 0 ? <ProductGrid products={items} shopCards /> : null}
           {!loading && meta && items.length > 0 ? (
             <nav className="shop-pagination" aria-label="Product pages">
-              <button type="button" className="btn-line" disabled={meta.page <= 1} onClick={() => setParam("page", String(meta.page - 1))}>
-                Previous
+              <button
+                type="button"
+                className="page-arrow"
+                aria-label="Previous page"
+                disabled={meta.page <= 1}
+                onClick={() => setParam("page", String(meta.page - 1))}
+              >
+                ‹
               </button>
-              <span>Page {meta.page} of {meta.totalPages}</span>
-              <button type="button" className="btn-line" disabled={meta.page >= meta.totalPages} onClick={() => setParam("page", String(meta.page + 1))}>
-                Next
+              {visiblePages.map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  className={pageNumber === meta.page ? "page-number active" : "page-number"}
+                  aria-label={`Page ${pageNumber}`}
+                  aria-current={pageNumber === meta.page ? "page" : undefined}
+                  onClick={() => setParam("page", String(pageNumber))}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="page-arrow"
+                aria-label="Next page"
+                disabled={meta.page >= meta.totalPages}
+                onClick={() => setParam("page", String(meta.page + 1))}
+              >
+                ›
               </button>
             </nav>
           ) : null}
