@@ -43,7 +43,29 @@ function hasProductFabric(variant: Variant) {
 }
 
 function hasGenderSpecification(product: ProductDetail) {
-  return ["men", "women"].includes(product.category.slug);
+  return ["men", "women"].includes(product.category?.slug ?? "");
+}
+
+function normalizeProduct(product: ProductDetail): ProductDetail {
+  const rawCategory = product.category && typeof product.category === "object" ? product.category : null;
+  const rawBrand = product.brand && typeof product.brand === "object" ? product.brand : null;
+  return {
+    ...product,
+    category: {
+      id: rawCategory?.id ?? "",
+      name: rawCategory?.name || "Uncategorized",
+      slug: rawCategory?.slug ?? "",
+      parentId: rawCategory?.parentId ?? null,
+    },
+    brand: rawBrand ? {
+      id: rawBrand.id ?? "",
+      name: rawBrand.name || "Unbranded",
+      slug: rawBrand.slug ?? "unbranded",
+    } : { id: "", name: "Unbranded", slug: "unbranded" },
+    images: Array.isArray(product.images) ? product.images : [],
+    variants: Array.isArray(product.variants) ? product.variants : [],
+    description: typeof product.description === "string" ? product.description : "",
+  };
 }
 
 function readProductCache(): Record<string, ProductDetail> {
@@ -100,7 +122,10 @@ export function ProductPage() {
   const { user } = useAuth();
   const { add, busy, setDrawer } = useCart();
   const { settings } = useStore();
-  const [product, setProduct] = useState<ProductDetail | null>(() => readProductCache()[id] ?? null);
+  const [product, setProduct] = useState<ProductDetail | null>(() => {
+    const cached = readProductCache()[id];
+    return cached ? normalizeProduct(cached) : null;
+  });
   const [related, setRelated] = useState<ProductCardData[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [average, setAverage] = useState(0);
@@ -182,7 +207,7 @@ export function ProductPage() {
   useEffect(() => {
     let active = true;
     const cachedProducts = readProductCache();
-    const cachedProduct = cachedProducts[id] ?? null;
+    const cachedProduct = cachedProducts[id] ? normalizeProduct(cachedProducts[id]) : null;
     setProduct(cachedProduct);
     setRelated([]);
     setRelatedLoading(true);
@@ -280,7 +305,7 @@ export function ProductPage() {
 
     api.product(id, Boolean(cachedProduct))
       .then((next) => {
-        if (active) applyProduct(next);
+        if (active) applyProduct(normalizeProduct(next));
       })
       .catch((reason: unknown) => {
         if (active && !cachedProduct) setError(reason instanceof Error ? reason.message : "Product not found");
@@ -335,8 +360,9 @@ export function ProductPage() {
       api.product(id, true)
         .then((next) => {
           if (active) {
-            setProduct(next);
-            cacheProduct(next);
+            const normalized = normalizeProduct(next);
+            setProduct(normalized);
+            cacheProduct(normalized);
           }
         })
         .catch((reason: unknown) => {
