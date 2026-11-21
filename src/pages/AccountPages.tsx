@@ -25,9 +25,10 @@ export function AuthCallbackPage() {
       setError(failed);
       return;
     }
-    const fromHash = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("token");
-    if (fromHash) sessionStorage.setItem(OAUTH_TOKEN_KEY, fromHash);
-    const token = fromHash || sessionStorage.getItem(OAUTH_TOKEN_KEY);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const fromRedirect = params.get("token") || params.get("access_token") || hashParams.get("token") || hashParams.get("access_token");
+    if (fromRedirect) sessionStorage.setItem(OAUTH_TOKEN_KEY, fromRedirect);
+    const token = fromRedirect || sessionStorage.getItem(OAUTH_TOKEN_KEY);
     if (!token) {
       setError("Login did not return a session");
       return;
