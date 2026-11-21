@@ -51,7 +51,7 @@ function navClass(href: string, isActive: boolean, pathname: string, search: str
   return isActive ? "on" : "";
 }
 
-function CategoryHoverItem({ category, categories, onNavigate }: { category: Category; categories: Category[]; onNavigate: () => void }) {
+function CategoryHoverItem({ category, categories, onNavigate }: { category: Category; categories: Category[]; onNavigate: (event: MouseEvent<HTMLAnchorElement>) => void }) {
   const children = categories
     .filter((item) => item.parentId === category.id && item.isActive !== false)
     .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name));
