@@ -247,6 +247,8 @@ function request<T>(
       } else if (variantMutation) {
         window.dispatchEvent(new Event("app:variant-changed"));
         window.dispatchEvent(new Event("app:products-changed"));
+      } else if (/^\/categories(?:\/[^/?]+)?\/?$/i.test(path)) {
+        window.dispatchEvent(new Event("app:categories-changed"));
       }
     } else if (
       cacheable &&

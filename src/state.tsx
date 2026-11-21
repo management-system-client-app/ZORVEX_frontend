@@ -412,6 +412,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let active = true;
     let refreshing = false;
 
+    const refreshCategories = async () => {
+      try {
+        const categories = await api.categories(true);
+        if (!active) return;
+        setCatalog((current) => ({ ...current, categories }));
+        setCategoryImages(new Map(categories.map((item) => [item.id, item.imageUrl ?? null])));
+        writeStoreCache(CATEGORIES_CACHE_KEY, categories);
+        const latestCatalog = { ...readStoreCache(CATALOG_CACHE_KEY, fallbackCatalog, isCatalog), categories };
+        writeStoreCache(CATALOG_CACHE_KEY, latestCatalog);
+        setCatalogReady(true);
+      } catch (reason) {
+        console.warn("Updated categories could not be refreshed", reason);
+      }
+    };
+
     const refresh = async (fresh = false) => {
       if (!active || refreshing || document.visibilityState !== "visible") return;
       refreshing = true;
@@ -465,12 +480,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const refreshOnFocus = () => void refresh(true);
     window.addEventListener("focus", refreshOnFocus);
     document.addEventListener("visibilitychange", refreshOnFocus);
+    window.addEventListener("app:categories-changed", refreshCategories);
 
     return () => {
       active = false;
       window.clearInterval(timer);
       window.removeEventListener("focus", refreshOnFocus);
       document.removeEventListener("visibilitychange", refreshOnFocus);
+      window.removeEventListener("app:categories-changed", refreshCategories);
     };
   }, []);
 
