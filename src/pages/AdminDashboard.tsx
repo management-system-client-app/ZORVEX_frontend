@@ -1544,8 +1544,16 @@ export function AdminProducts() {
             <span className="rounded-lg border border-rose-800/60 bg-rose-950/25 px-2.5 py-1 text-xs text-rose-200">{lowStockProducts} low stock</span>
           </div>
         </div>
-        <div className="hidden overflow-x-auto sm:block">
-          <table className="w-full min-w-[640px] text-left text-sm">
+        <div className="hidden overflow-hidden sm:block">
+          <table className="w-full table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-[28%]" />
+              <col className="w-[15%]" />
+              <col className="w-[11%]" />
+              <col className="w-[9%]" />
+              <col className="w-[12%]" />
+              <col className="w-[25%]" />
+            </colgroup>
             <thead className="bg-[#171c24] text-[11px] tracking-[0.1em] text-slate-400 uppercase">
               <tr>
                 <th className="px-5 py-3 font-medium"><span className="inline-flex items-center gap-1.5"><Icon d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8" />Product</span></th>
@@ -1572,15 +1580,15 @@ export function AdminProducts() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5"><span className="rounded-md border border-slate-700 bg-[#171c24] px-2 py-1 text-xs text-slate-300">{product.category?.name ?? "Uncategorized"}</span></td>
+                    <td className="min-w-0 px-3 py-3.5"><span className="block max-w-full truncate rounded-md border border-slate-700 bg-[#171c24] px-2 py-1 text-xs text-slate-300" title={product.category?.name ?? "Uncategorized"}>{product.category?.name ?? "Uncategorized"}</span></td>
                     <td className="px-5 py-3.5 font-semibold text-slate-100">{money(product.basePrice)}</td>
                     <td className="px-5 py-3.5"><span className={`inline-flex min-w-14 justify-center rounded-lg border px-2.5 py-1 text-xs font-semibold ${stock <= 0 ? "border-rose-800/60 bg-rose-950/30 text-rose-200" : stock <= 5 ? "border-amber-800/60 bg-amber-950/25 text-amber-200" : "border-emerald-800/60 bg-emerald-950/25 text-emerald-200"}`}>{stock}</span></td>
                     <td className="px-5 py-3.5">{product.status ? <StatusBadge status={product.status} /> : "—"}</td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="min-w-0 px-2 py-3.5">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
                         <button
                           type="button"
-                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-700/70 bg-emerald-950/30 px-3 text-sm font-medium text-emerald-200 transition-colors duration-200 hover:bg-emerald-800/50"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-700/70 bg-emerald-950/30 px-2 text-xs font-medium text-emerald-200 transition-colors duration-200 hover:bg-emerald-800/50"
                           onClick={() => void openStockEditor(product.id)}
                         >
                           <Icon d="M12 5v14m-7-7h14" />
@@ -1588,7 +1596,7 @@ export function AdminProducts() {
                         </button>
                         <Link
                           to={`/admin/products/${product.id}/edit${location.search}`}
-                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-600 bg-[#202630] px-3 text-sm font-medium text-slate-300 transition-colors duration-200 hover:border-emerald-700 hover:bg-emerald-950/40 hover:text-emerald-200"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-600 bg-[#202630] px-2 text-xs font-medium text-slate-300 transition-colors duration-200 hover:border-emerald-700 hover:bg-emerald-950/40 hover:text-emerald-200"
                         >
                           <Icon d="m15 5 4 4M4 20l4.5-1 10.2-10.2a2.1 2.1 0 0 0-3-3L5.5 16 4 20z" />
                           Edit
@@ -1596,7 +1604,7 @@ export function AdminProducts() {
                         {canDeleteProducts ? (
                           <button
                             type="button"
-                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 text-sm font-medium text-rose-300 transition-colors duration-200 hover:border-rose-700 hover:bg-rose-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#202630]"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/10 px-2 text-xs font-medium text-rose-300 transition-colors duration-200 hover:border-rose-700 hover:bg-rose-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#202630]"
                             onClick={() => {
                               if (!window.confirm(`Delete ${product.name}?`)) return;
                               api.deleteProduct(product.id).then((result) => {
