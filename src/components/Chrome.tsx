@@ -51,6 +51,26 @@ function navClass(href: string, isActive: boolean, pathname: string, search: str
   return isActive ? "on" : "";
 }
 
+function CategoryHoverItem({ category, categories, onNavigate }: { category: Category; categories: Category[]; onNavigate: () => void }) {
+  const children = categories
+    .filter((item) => item.parentId === category.id && item.isActive !== false)
+    .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name));
+
+  return (
+    <div className="category-hover-item" key={category.id}>
+      <Link className="category-hover-link" to={`/shop?categoryId=${category.id}`} onClick={onNavigate}>
+        <span>{category.name}</span>
+        <ChevronRight size={15} aria-hidden="true" />
+      </Link>
+      {children.length > 0 ? (
+        <div className="category-hover-submenu">
+          {children.map((child) => <CategoryHoverItem key={child.id} category={child} categories={categories} onNavigate={onNavigate} />)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function CategoryList({
   categories,
   expandedCategory,
@@ -97,7 +117,8 @@ function CategoryList({
               <div className="category-menu-children">
                 {children.map((child) => (
                   <Link key={child.id} to={`/shop?categoryId=${child.id}`} onClick={onNavigate}>
-                    {child.name}
+                    <span>{child.name}</span>
+                    <ChevronRight size={15} aria-hidden="true" />
                   </Link>
                 ))}
               </div>
@@ -621,7 +642,7 @@ export function Header() {
                   ) : null}
                   {dismissedNavDropdown !== item.label ? (
                     <div className="dropdown">
-                      {item.children.map((child) => <Link key={child.id} to={`/shop?categoryId=${child.id}`} onClick={dismissDropdown}>{child.name}</Link>)}
+                      {item.children.map((child) => <CategoryHoverItem key={child.id} category={child} categories={catalog.categories} onNavigate={dismissDropdown} />)}
                     </div>
                   ) : null}
                 </div>
