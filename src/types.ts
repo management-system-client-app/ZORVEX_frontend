@@ -399,6 +399,7 @@ export type VariantRow = {
   id: string;
   sku: string;
   stock: number;
+  reserved?: number;
   price: string | number | null;
   isActive: boolean;
   productId: string;

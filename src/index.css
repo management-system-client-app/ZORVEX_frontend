@@ -4212,6 +4212,11 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   .store-shell .category-nav .top-nav { gap: 6px; }
 }
 
+@media (min-width: 900px) {
+  .store-shell .account-menu-backdrop,
+  .store-shell .account-menu-panel { display: none !important; }
+}
+
 .store-shell .header-account-wrap {
   position: relative;
   display: flex;
@@ -4245,9 +4250,7 @@ th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
   content: "";
 }
 .store-shell .header-account-profile:focus-visible { outline: 2px solid #2864a8; outline-offset: 3px; }
-.store-shell .header-account-wrap:hover .header-account-dropdown,
-.store-shell .header-account-wrap:has(.header-account-profile[aria-expanded="true"]) .header-account-dropdown,
-.store-shell .header-account-wrap:has(:focus-visible) .header-account-dropdown {
+.store-shell .header-account-wrap:has(.header-account-profile[aria-expanded="true"]) .header-account-dropdown {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);

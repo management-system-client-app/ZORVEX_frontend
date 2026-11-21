@@ -6,7 +6,7 @@ import { UserFace } from "../components/Chrome";
 import { DetailSkeleton, RowsSkeleton, SkeletonBlock } from "../components/Skeleton";
 import { coverImage, money, titleCaseStatus } from "../format";
 import { useAuth, useStore } from "../state";
-import type { AdminOrder, DashboardOverview, PageMeta, ProductCardData, ProductDetail, StoreReturn, User } from "../types";
+import type { AdminOrder, DashboardOverview, PageMeta, ProductCardData, ProductDetail, StoreReturn, User, VariantRow } from "../types";
 
 const STATUSES = [
   "PENDING",
@@ -1325,8 +1325,28 @@ export function AdminOrderDetail() {
 
 type AdminProduct = ProductCardData & {
   status?: string;
-  variants?: { stock: number }[];
 };
+
+function activeProductVariants(product: AdminProduct) {
+  return (product.variants ?? []).filter((variant) => variant.isActive !== false);
+}
+
+type ProductInventory = { stock: number; activeVariantCount: number };
+
+function productStockTotal(product: AdminProduct, inventory?: Record<string, ProductInventory>) {
+  const apiInventory = inventory?.[product.id];
+  if (apiInventory) return apiInventory.stock;
+  return activeProductVariants(product).reduce(
+    (sum, variant) => sum + Math.max(variant.stock - (variant.reserved ?? 0), 0),
+    0,
+  );
+}
+
+function hasTrackedInventory(product: AdminProduct, inventory?: Record<string, ProductInventory>) {
+  const apiInventory = inventory?.[product.id];
+  if (apiInventory) return product.status === "ACTIVE" && apiInventory.activeVariantCount > 0;
+  return product.status === "ACTIVE" && activeProductVariants(product).length > 0;
+}
 
 const adminProductPageCache = new Map<string, { items: AdminProduct[]; meta: PageMeta }>();
 
@@ -1337,9 +1357,16 @@ export function AdminProducts() {
   const [params, setParams] = useSearchParams();
   const search = params.get("search") ?? "";
   const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
+  const stockValue = params.get("stock");
+  const stockFilter = stockValue === "low" || stockValue === "out" || stockValue === "available" ? stockValue : "";
   const pageCacheKey = `${search}\u0000${page}`;
   const cachedPage = adminProductPageCache.get(pageCacheKey);
   const [items, setItems] = useState<AdminProduct[]>(() => cachedPage?.items ?? []);
+  const [stockFilteredProducts, setStockFilteredProducts] = useState<AdminProduct[]>([]);
+  const [inventoryByProduct, setInventoryByProduct] = useState<Record<string, ProductInventory>>({});
+  const [inventoryReady, setInventoryReady] = useState(false);
+  const [catalogOutOfStockCount, setCatalogOutOfStockCount] = useState<number | null>(null);
+  const [catalogAvailableCount, setCatalogAvailableCount] = useState<number | null>(null);
   const [meta, setMeta] = useState<PageMeta | null>(() => cachedPage?.meta ?? null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(() => !cachedPage);
@@ -1368,6 +1395,47 @@ export function AdminProducts() {
 
   useEffect(() => {
     let active = true;
+    const loadVariantInventory = async () => {
+      try {
+        const first = await api.variantsPage({ page: 1, limit: 100 });
+        const variants: VariantRow[] = [...first.items];
+        const pageSize = first.items.length;
+        let hasMore = pageSize > 0;
+        for (let start = 2; hasMore && start <= 1000; start += 5) {
+          const pages = Array.from({ length: 5 }, (_, index) => start + index);
+          const batch = await Promise.all(pages.map((nextPage) => api.variantsPage({ page: nextPage, limit: 100 })));
+          variants.push(...batch.flatMap((result) => result.items));
+          hasMore = batch.every((result) => result.items.length >= pageSize);
+        }
+        if (!active) return;
+        const inventory: Record<string, ProductInventory> = {};
+        for (const variant of variants) {
+          if (!variant.isActive) continue;
+          const entry = inventory[variant.productId] ?? { stock: 0, activeVariantCount: 0 };
+          entry.stock += Math.max(variant.stock - (variant.reserved ?? 0), 0);
+          entry.activeVariantCount += 1;
+          inventory[variant.productId] = entry;
+        }
+        setInventoryByProduct(inventory);
+        setInventoryReady(true);
+      } catch {
+        if (active) setInventoryReady(true);
+      }
+    };
+    void loadVariantInventory();
+    const reloadInventory = () => { void loadVariantInventory(); };
+    window.addEventListener("app:products-changed", reloadInventory);
+    window.addEventListener("app:variant-changed", reloadInventory);
+    return () => {
+      active = false;
+      window.removeEventListener("app:products-changed", reloadInventory);
+      window.removeEventListener("app:variant-changed", reloadInventory);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (stockFilter) return () => { active = false; };
     const loadProducts = () => {
       setLoading(!adminProductPageCache.has(pageCacheKey));
       setError("");
@@ -1395,13 +1463,116 @@ export function AdminProducts() {
       window.removeEventListener("app:products-changed", loadProducts);
       window.removeEventListener("app:variant-changed", loadProducts);
     };
-  }, [page, pageCacheKey, search]);
+  }, [page, pageCacheKey, search, stockFilter]);
 
-  const visibleStock = items.reduce((sum, product) => sum + (product.variants ?? []).reduce((variantSum, variant) => variantSum + variant.stock, 0), 0);
-  const lowStockProducts = items.filter((product) => {
-    const productStock = (product.variants ?? []).reduce((sum, variant) => sum + variant.stock, 0);
-    return productStock > 0 && productStock <= 5;
+  useEffect(() => {
+    if (!stockFilter || !inventoryReady) {
+      setStockFilteredProducts([]);
+      return;
+    }
+    let active = true;
+    setLoading(true);
+    setError("");
+    const loadStockFilteredProducts = async () => {
+      try {
+        const first = await api.products({ page: 1, limit: 100, sort: "latest", search: search || undefined }, true);
+        const allProducts = [...first.items] as AdminProduct[];
+        const pageSize = first.items.length;
+        let hasMore = pageSize > 0;
+        for (let start = 2; hasMore && start <= 1000; start += 5) {
+          const pages = Array.from({ length: 5 }, (_, index) => start + index);
+          const batch = await Promise.all(pages.map((nextPage) => api.products({ page: nextPage, limit: 100, sort: "latest", search: search || undefined }, true)));
+          allProducts.push(...batch.flatMap((result) => result.items as AdminProduct[]));
+          hasMore = batch.every((result) => result.items.length >= pageSize);
+        }
+        if (!active) return;
+        setStockFilteredProducts(allProducts.filter((product) => {
+          const totalStock = productStockTotal(product, inventoryByProduct);
+          if (!hasTrackedInventory(product, inventoryByProduct)) return false;
+          if (stockFilter === "out") return totalStock === 0;
+          if (stockFilter === "available") return totalStock > 0;
+          return totalStock > 0 && totalStock <= 5;
+        }));
+      } catch (reason) {
+        if (active) setError(reason instanceof ApiError ? reason.message : "Could not load stock-filtered products");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void loadStockFilteredProducts();
+    return () => { active = false; };
+  }, [stockFilter, search, inventoryReady, inventoryByProduct]);
+
+  const stockFilteredPageCount = Math.max(1, Math.ceil(stockFilteredProducts.length / 12));
+  const displayTotalPages = stockFilter ? stockFilteredPageCount : meta?.totalPages ?? 1;
+  const currentDisplayPage = Math.min(page, displayTotalPages);
+  const shownProducts = stockFilter ? stockFilteredProducts.slice((currentDisplayPage - 1) * 12, currentDisplayPage * 12) : items;
+  const visibleStock = shownProducts.reduce((sum, product) => sum + productStockTotal(product, inventoryByProduct), 0);
+  const lowStockProducts = stockFilter === "low" ? stockFilteredProducts.length : shownProducts.filter((product) => {
+    const productStock = productStockTotal(product, inventoryByProduct);
+    return hasTrackedInventory(product, inventoryByProduct) && productStock > 0 && productStock <= 5;
   }).length;
+  const outOfStockProducts = stockFilter === "out" ? stockFilteredProducts.length : shownProducts.filter((product) =>
+    hasTrackedInventory(product, inventoryByProduct) && productStockTotal(product, inventoryByProduct) === 0,
+  ).length;
+  const outOfStockCount = stockFilter === "out" && !loading
+    ? stockFilteredProducts.length
+    : catalogOutOfStockCount ?? outOfStockProducts;
+  const availableProductCount = stockFilter === "available" && !loading
+    ? stockFilteredProducts.length
+    : catalogAvailableCount ?? shownProducts.filter((product) => hasTrackedInventory(product, inventoryByProduct) && productStockTotal(product, inventoryByProduct) > 0).length;
+
+  useEffect(() => {
+    let active = true;
+    let refreshing = false;
+    const loadCatalogOutOfStockCount = async () => {
+      if (!active || refreshing || !inventoryReady) return;
+      refreshing = true;
+      try {
+        const first = await api.products({ page: 1, limit: 100, sort: "latest", search: search || undefined }, true);
+        const allProducts = [...first.items] as AdminProduct[];
+        const pageSize = first.items.length;
+        let hasMore = pageSize > 0;
+        for (let start = 2; hasMore && start <= 1000; start += 5) {
+          const pages = Array.from({ length: 5 }, (_, index) => start + index);
+          const batch = await Promise.all(pages.map((nextPage) => api.products({ page: nextPage, limit: 100, sort: "latest", search: search || undefined }, true)));
+          allProducts.push(...batch.flatMap((result) => result.items as AdminProduct[]));
+          hasMore = batch.every((result) => result.items.length >= pageSize);
+        }
+        if (active) {
+          setCatalogOutOfStockCount(allProducts.filter((product) =>
+            hasTrackedInventory(product, inventoryByProduct) && productStockTotal(product, inventoryByProduct) === 0,
+          ).length);
+          setCatalogAvailableCount(allProducts.filter((product) =>
+            hasTrackedInventory(product, inventoryByProduct) && productStockTotal(product, inventoryByProduct) > 0,
+          ).length);
+        }
+      } catch {
+        if (active) {
+          setCatalogOutOfStockCount(null);
+          setCatalogAvailableCount(null);
+        }
+      } finally {
+        refreshing = false;
+      }
+    };
+    void loadCatalogOutOfStockCount();
+    window.addEventListener("app:products-changed", loadCatalogOutOfStockCount);
+    window.addEventListener("app:variant-changed", loadCatalogOutOfStockCount);
+    return () => {
+      active = false;
+      window.removeEventListener("app:products-changed", loadCatalogOutOfStockCount);
+      window.removeEventListener("app:variant-changed", loadCatalogOutOfStockCount);
+    };
+  }, [search, inventoryReady, inventoryByProduct]);
+
+  function setStockFilter(nextFilter: "" | "low" | "out" | "available") {
+    const next = new URLSearchParams(params);
+    if (nextFilter) next.set("stock", nextFilter);
+    else next.delete("stock");
+    next.delete("page");
+    setParams(next, { preventScrollReset: true });
+  }
   const activeStockVariants = stockProduct?.variants.filter((variant) => variant.isActive !== false) ?? [];
   const selectedStockVariant = activeStockVariants.find((variant) => variant.id === selectedStockVariantId);
 
@@ -1535,13 +1706,15 @@ export function AdminProducts() {
             <span className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-800/50 bg-emerald-950/25 text-emerald-200"><Icon d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8" /></span>
             <div>
               <h2 className="text-sm font-semibold text-slate-100">Product inventory</h2>
-              <p className="mt-0.5 text-xs text-slate-400">Current page stock overview</p>
+              <p className="mt-0.5 text-xs text-slate-400">{stockFilter ? "Catalog wide stock filter" : "Current page stock overview"}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-lg border border-slate-600 bg-[#171c24] px-2.5 py-1 text-xs text-slate-300">{items.length} shown</span>
+            <span className="rounded-lg border border-slate-600 bg-[#171c24] px-2.5 py-1 text-xs text-slate-300">{shownProducts.length} shown</span>
             <span className="rounded-lg border border-emerald-800/60 bg-emerald-950/25 px-2.5 py-1 text-xs text-emerald-200">{visibleStock} units</span>
-            <span className="rounded-lg border border-rose-800/60 bg-rose-950/25 px-2.5 py-1 text-xs text-rose-200">{lowStockProducts} low stock</span>
+            <button type="button" aria-pressed={stockFilter === "low"} onClick={() => setStockFilter(stockFilter === "low" ? "" : "low")} className={`rounded-lg border px-2.5 py-1 text-xs transition-colors ${stockFilter === "low" ? "border-amber-500 bg-amber-950/50 text-amber-100" : "border-amber-800/60 bg-amber-950/25 text-amber-200 hover:border-amber-500"}`}>Low stock (≤5): {lowStockProducts}</button>
+            <button type="button" aria-pressed={stockFilter === "available"} onClick={() => setStockFilter(stockFilter === "available" ? "" : "available")} className={`rounded-lg border px-2.5 py-1 text-xs transition-colors ${stockFilter === "available" ? "border-emerald-500 bg-emerald-950/50 text-emerald-100" : "border-emerald-800/60 bg-emerald-950/25 text-emerald-200 hover:border-emerald-500"}`}>Available: {availableProductCount}</button>
+            <button type="button" aria-pressed={stockFilter === "out"} onClick={() => setStockFilter(stockFilter === "out" ? "" : "out")} className={`rounded-lg border px-2.5 py-1 text-xs transition-colors ${stockFilter === "out" ? "border-rose-500 bg-rose-950/50 text-rose-100" : "border-rose-800/60 bg-rose-950/25 text-rose-200 hover:border-rose-500"}`}>Out of stock: {outOfStockCount}</button>
           </div>
         </div>
         <div className="hidden overflow-hidden sm:block">
@@ -1567,8 +1740,8 @@ export function AdminProducts() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} className="p-5"><RowsSkeleton rows={6} columns={6} /></td></tr>
-              ) : items.map((product) => {
-                const stock = (product.variants ?? []).reduce((sum, variant) => sum + variant.stock, 0);
+              ) : shownProducts.map((product) => {
+                const stock = productStockTotal(product, inventoryByProduct);
                 return (
                   <tr key={product.id} className="border-t border-slate-700 transition-colors duration-200 ease-out hover:bg-slate-700/20">
                     <td className="px-5 py-3.5">
@@ -1633,8 +1806,8 @@ export function AdminProducts() {
         <div className="space-y-3 p-3 sm:hidden">
           {loading ? (
             <RowsSkeleton rows={4} columns={1} />
-          ) : items.map((product) => {
-            const stock = (product.variants ?? []).reduce((sum, variant) => sum + variant.stock, 0);
+          ) : shownProducts.map((product) => {
+            const stock = productStockTotal(product, inventoryByProduct);
             const image = coverImage(product);
             return (
               <article key={product.id} className="rounded-xl border border-slate-700 bg-[#171c24] p-3">
@@ -1664,13 +1837,22 @@ export function AdminProducts() {
             );
           })}
         </div>
-        {!loading && items.length === 0 && !error ? <div className="px-5 py-12 text-center"><span className="mx-auto grid h-11 w-11 place-items-center rounded-xl border border-slate-700 bg-[#171c24] text-slate-400"><Icon d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8" /></span><p className="mt-3 text-sm font-medium text-slate-200">No products found</p><p className="mt-1 text-xs text-slate-400">Add a product or adjust your search to see catalog results.</p></div> : null}
+        {!loading && shownProducts.length === 0 && !error ? <div className="px-5 py-12 text-center"><span className="mx-auto grid h-11 w-11 place-items-center rounded-xl border border-slate-700 bg-[#171c24] text-slate-400"><Icon d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8" /></span><p className="mt-3 text-sm font-medium text-slate-200">{stockFilter === "low" ? "No low-stock products" : stockFilter === "out" ? "No out-of-stock products" : stockFilter === "available" ? "No available products" : "No products found"}</p><p className="mt-1 text-xs text-slate-400">{stockFilter ? "Try another stock filter or clear this filter to see the full catalog." : "Add a product or adjust your search to see catalog results."}</p></div> : null}
       </section>
-      {meta && meta.totalPages > 1 ? (
-        <div className="flex items-center justify-end gap-2">
-          <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Previous</button>
-          <span className="rounded-lg border border-slate-700 bg-[#171c24] px-3 py-1.5 text-xs text-slate-300">Page {page} of {meta.totalPages}</span>
-          <button type="button" disabled={page >= meta.totalPages} onClick={() => setPage(page + 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Next</button>
+      {displayTotalPages > 1 ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button type="button" disabled={currentDisplayPage <= 1} onClick={() => setPage(currentDisplayPage - 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Previous</button>
+          <span className="rounded-lg border border-slate-700 bg-[#171c24] px-3 py-1.5 text-xs text-slate-300">Page {currentDisplayPage} of {displayTotalPages}</span>
+          <form className="flex items-center gap-2" onSubmit={(event) => {
+            event.preventDefault();
+            const requestedPage = Number(new FormData(event.currentTarget).get("page"));
+            if (Number.isInteger(requestedPage)) setPage(Math.max(1, Math.min(displayTotalPages, requestedPage)));
+          }}>
+            <label htmlFor="admin-products-page" className="text-xs text-slate-400">Go to page</label>
+            <input id="admin-products-page" key={`${currentDisplayPage}-${displayTotalPages}`} name="page" type="number" min="1" max={displayTotalPages} defaultValue={currentDisplayPage} className="w-20 rounded-lg border border-slate-600 bg-[#171c24] px-2 py-1.5 text-xs text-white outline-none focus:border-emerald-500" />
+            <button type="submit" className="rounded-lg border border-emerald-700/70 bg-emerald-950/30 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:border-emerald-500">Go</button>
+          </form>
+          <button type="button" disabled={currentDisplayPage >= displayTotalPages} onClick={() => setPage(currentDisplayPage + 1)} className="rounded-lg border border-slate-600 bg-[#202630] px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-[#9b6075] hover:text-white disabled:opacity-40">Next</button>
         </div>
       ) : null}
       {stockProduct ? (
