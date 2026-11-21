@@ -415,7 +415,7 @@ export function HomePage() {
       ) : null}
 
       {best.length > 0 ? (
-        <section className="section home-product-section">
+        <section className="section home-product-section home-best-sellers">
           <div className="section-head">
             <div className="home-section-heading">
               <span className="home-section-kicker">CUSTOMER FAVORITES</span>
@@ -426,7 +426,7 @@ export function HomePage() {
               See More
             </Link>
           </div>
-          <ProductCarousel products={best} autoSlide />
+          <ProductCarousel products={best.slice(0, 4)} autoSlide />
         </section>
       ) : null}
 
