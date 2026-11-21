@@ -103,6 +103,9 @@ export function HomePage() {
   const skeletonRef = useRef<HTMLDivElement>(null);
   const [reservedHeight, setReservedHeight] = useState(0);
   const isLoading = loading;
+  const bestSellerCards = [...best, ...latestProducts]
+    .filter((product, index, products) => products.findIndex((candidate) => candidate.id === product.id) === index)
+    .slice(0, 30);
 
   useEffect(() => {
     let active = true;
@@ -166,7 +169,7 @@ export function HomePage() {
         if (active) setLoading(false);
       });
 
-    api.products({ status: "ACTIVE", limit: 20, page: 1, sort: "latest" })
+    api.products({ status: "ACTIVE", limit: 30, page: 1, sort: "latest" })
       .then(async (result) => {
         if (!active) return;
         setLatestProducts(result.items);
@@ -187,6 +190,7 @@ export function HomePage() {
       });
 
     api.bestSellers()
+      .then((products) => hydrateImages(products))
       .then((products) => {
         if (active) {
           setBest(products);
@@ -230,19 +234,19 @@ export function HomePage() {
       if (!refreshingProducts) {
         refreshingProducts = true;
         Promise.all([
-          api.products({ status: "ACTIVE", limit: 20, page: 1, sort: "latest" }, true),
+          api.products({ status: "ACTIVE", limit: 30, page: 1, sort: "latest" }, true),
           api.bestSellers(true),
         ])
           .then(async ([result, bestSellers]) => {
             if (!active) return;
-            setLatestProducts(result.items);
-            setBest(bestSellers);
-            updateDailyDeals(result.items);
-            const products = await hydrateImages(result.items);
-            if (active) {
-              setLatestProducts(products);
-              updateDailyDeals(products);
-            }
+            const [products, hydratedBest] = await Promise.all([
+              hydrateImages(result.items),
+              hydrateImages(bestSellers),
+            ]);
+            if (!active) return;
+            setLatestProducts(products);
+            setBest(hydratedBest);
+            updateDailyDeals(products);
           })
           .catch((reason: unknown) => {
             if (active) {
@@ -414,7 +418,7 @@ export function HomePage() {
         </section>
       ) : null}
 
-      {best.length > 0 ? (
+      {bestSellerCards.length > 0 ? (
         <section className="section home-product-section home-best-sellers">
           <div className="section-head">
             <div className="home-section-heading">
@@ -426,7 +430,10 @@ export function HomePage() {
               See More
             </Link>
           </div>
-          <ProductCarousel products={best.slice(0, 4)} autoSlide />
+          <ProductCarousel products={bestSellerCards} autoSlide />
+          <div className="home-best-sellers-all">
+            <Link className="see-more" to="/shop">All products</Link>
+          </div>
         </section>
       ) : null}
 

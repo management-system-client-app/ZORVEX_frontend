@@ -15938,3 +15938,10 @@ body:has(.checkout-unique),
 }
 .category-nav .category-hover-item:hover > .category-hover-submenu,
 .category-nav .category-hover-item:focus-within > .category-hover-submenu { display: grid; }
+
+/* Show five Best sellers cards at a time while the carousel can scroll through the full list. */
+.store-shell .home .home-best-sellers .product-row {
+  grid-auto-columns: calc((100% - 52px) / 5);
+  gap: 13px;
+}
+.home-best-sellers-all { display: flex; justify-content: center; margin-top: 18px; }

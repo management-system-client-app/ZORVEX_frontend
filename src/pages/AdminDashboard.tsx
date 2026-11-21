@@ -1204,6 +1204,7 @@ export function AdminOrderDetail() {
                   <p className="truncate font-medium text-slate-100">{item.productName}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <span className="rounded-md border border-slate-700 bg-[#171c24] px-2 py-0.5 text-[11px] text-slate-400">SKU {item.sku}</span>
+                    {item.supplierSize ? <span className="rounded-md border border-violet-800/50 bg-violet-950/30 px-2 py-0.5 text-[11px] font-medium text-violet-200">Size {item.supplierSize}</span> : null}
                     <span className="rounded-md border border-sky-800/50 bg-sky-950/30 px-2 py-0.5 text-[11px] font-medium text-sky-200">Qty {item.quantity}</span>
                     {order.referredByStaff ? (
                       <span className="rounded-md border border-emerald-800/50 bg-emerald-950/25 px-2 py-0.5 text-[11px] text-emerald-200">

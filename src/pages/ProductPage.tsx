@@ -42,6 +42,18 @@ function hasProductFabric(variant: Variant) {
   return Boolean(variant.fabric && variant.fabric.slug !== "not-applicable");
 }
 
+function inferSupplierSizes(product: ProductDetail): string[] {
+  const searchable = `${product.name} ${product.category.name} ${product.category.slug}`.toLowerCase();
+  if (/\b(shoe|shoes|sneaker|sneakers|sandal|sandals|boot|boots|slipper|slippers)\b|জুতা|স্যান্ডেল/.test(searchable)) {
+    return ["38", "39", "40", "41", "42", "43", "44"];
+  }
+  if (/\b(saree|sari|saari|hijab|scarf)\b|শাড়ি|হিজাব/.test(searchable)) return ["Free Size"];
+  if (/\b(shirt|t-shirt|tee|hoodie|jacket|coat|top|dress|kurti|sweatshirt|trouser|pants|jeans|clothing|apparel|fashion)\b|জামা|শার্ট|টি-শার্ট|হুডি|জ্যাকেট|পোশাক/.test(searchable)) {
+    return ["S", "M", "L", "XL", "XXL"];
+  }
+  return [];
+}
+
 function hasGenderSpecification(product: ProductDetail) {
   return ["men", "women"].includes(product.category?.slug ?? "");
 }
@@ -244,12 +256,8 @@ export function ProductPage() {
         const recommendations = new Map<string, ProductCardData>();
         const sariPattern = /sari|saree|saari|shari|শাড়ি/i;
         const isSari = sariPattern.test(`${next.name} ${next.category.name} ${next.category.slug}`);
-        const isRelevant = (item: ProductCardData) => {
-          const brandName = item.brand?.name?.trim() ?? "";
-          const hasBrand = brandName.length > 0 && brandName.toLowerCase() !== "none";
-          const hasFabric = item.variants?.some((variant) => Boolean(variant.fabricId)) ?? false;
-          return item.id !== next.id && hasBrand && hasFabric && (!isSari || sariPattern.test(`${item.name} ${item.category?.name ?? ""} ${item.category?.slug ?? ""}`));
-        };
+        const isRelevant = (item: ProductCardData) =>
+          item.id !== next.id && (!isSari || sariPattern.test(`${item.name} ${item.category?.name ?? ""} ${item.category?.slug ?? ""}`));
         try {
           for (const item of await api.related(id, true)) {
             if (isRelevant(item)) recommendations.set(item.id, item);
@@ -258,7 +266,7 @@ export function ProductPage() {
           console.warn("Related products could not be loaded", reason);
         }
 
-        if (recommendations.size < 24) {
+        if (recommendations.size < 30) {
           try {
             const sameCategory = await api.products({
               status: "ACTIVE",
@@ -275,7 +283,7 @@ export function ProductPage() {
           }
         }
 
-        if (isSari && recommendations.size < 24) {
+        if (isSari && recommendations.size < 30) {
           for (const term of ["sari", "saree", "শাড়ি"]) {
             try {
               const matches = await api.products({ search: term, status: "ACTIVE", limit: 100, page: 1, sort: "latest" }, true);
@@ -288,13 +296,31 @@ export function ProductPage() {
           }
         }
 
-        const products = await hydrateImages([...recommendations.values()].slice(0, 24));
+        if (recommendations.size < 30) {
+          try {
+            const latest = await api.products({ status: "ACTIVE", limit: 100, page: 1, sort: "latest" }, true);
+            for (const item of latest.items) {
+              if (item.id !== next.id && !recommendations.has(item.id)) recommendations.set(item.id, item);
+              if (recommendations.size >= 30) break;
+            }
+          } catch (reason) {
+            console.warn("Fallback product recommendations could not be loaded", reason);
+          }
+        }
+
+        const products = await hydrateImages([...recommendations.values()].slice(0, 30));
         if (active) {
           setRelated(products);
           setRelatedLoading(false);
         }
       };
-      void loadRelated();
+      void loadRelated().catch((reason: unknown) => {
+        console.warn("Product recommendations could not be prepared", reason);
+        if (active) {
+          setRelated([]);
+          setRelatedLoading(false);
+        }
+      });
       api.reviews(id).then((result) => {
         if (!active) return;
         setReviews(result.items);
@@ -449,9 +475,11 @@ export function ProductPage() {
   const gallery = useMemo(() => {
     if (!product) return [];
     const selectedColorImages = product.images.filter((item) => item.colorId === colorId);
-    return selectedColorImages.length > 0
-      ? selectedColorImages
-      : product.images.filter((item) => !item.colorId);
+    const generalImages = product.images.filter((item) => !item.colorId);
+    if (selectedColorImages.length > 0) return selectedColorImages;
+    if (generalImages.length > 0) return generalImages;
+    if (product.images.length > 0) return product.images;
+    return product.imageUrl ? [{ url: product.imageUrl, alt: product.name, isPrimary: true }] : [];
   }, [product, colorId]);
 
   if (error) return <p className="error">{error}</p>;
@@ -459,7 +487,10 @@ export function ProductPage() {
 
   const flags = productFlags(product);
   const supplierSizes = sizes.length === 0
-    ? [...new Set([...(product.supplierSizes ?? []), ...extractSupplierSizes(product.description)])]
+    ? (() => {
+        const listedSizes = [...new Set([...(product.supplierSizes ?? []), ...extractSupplierSizes(product.description)])];
+        return listedSizes.length > 0 ? listedSizes : inferSupplierSizes(product);
+      })()
     : [];
   const unit = selected?.price != null ? Number(selected.price) : flags.price;
   const comparePrice = selected?.compareAtPrice != null

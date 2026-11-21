@@ -252,6 +252,7 @@ export type AdminOrderItem = {
   id: string;
   productName: string;
   sku: string;
+  supplierSize?: string | null;
   quantity: number;
   lineTotal: string | number;
   commissionPerUnit: string | number;

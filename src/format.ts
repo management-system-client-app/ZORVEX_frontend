@@ -50,13 +50,21 @@ export function productFlags(product: {
 }
 
 export function extractSupplierSizes(description?: string | null): string[] {
-  const options = description?.match(/(?:^|\n)Supplier options:\s*([^\n]+)/i)?.[1];
-  if (!options) return [];
-  return [...new Set(options.split("|").flatMap((group) => {
+  if (!description) return [];
+  const groups = [
+    description.match(/(?:^|\n)Supplier options:\s*([^\n]+)/i)?.[1] ?? "",
+    ...[...description.matchAll(/(?:available\s+sizes?|sizes?\s+available|choose\s+sizes?|select\s+sizes?|সাইজ[^:\n]{0,60})\s*[:：]\s*\(?([^\n).]{1,80})\)?/gi)]
+      .map((match) => match[1] ?? ""),
+  ].filter(Boolean);
+  return [...new Set(groups.flatMap((options) => options.split("|").flatMap((group) => {
     const separator = group.indexOf(":");
-    if (separator < 0 || !/^(?:size|age)$/i.test(group.slice(0, separator).trim())) return [];
-    return group.slice(separator + 1).split(",").map((value) => value.trim()).filter(Boolean);
-  }))];
+    const values = separator >= 0 && /^(?:size|age)$/i.test(group.slice(0, separator).trim())
+      ? group.slice(separator + 1)
+      : group;
+    return values.split(/[,/;]+/)
+      .map((value) => value.trim().replace(/[()\s]+$/g, ""))
+      .filter((value) => /^(?:XXXS|XXS|XS|S|M|L|XL|XXL|XXXL|XXXXL|free\s*size|one\s*size|\d{1,3}(?:\s*(?:cm|mm|in|inch))?)$/i.test(value));
+  })))];
 }
 
 export function productThumbnailUrl(value: string | null | undefined): string | null {
