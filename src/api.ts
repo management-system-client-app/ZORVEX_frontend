@@ -93,7 +93,10 @@ function mutationSuccessMessage(path: string, method: string) {
 
 function shouldCacheGet(path: string) {
   const adminSession = sessionStore.userSnapshot()?.accountType === "ADMIN";
-  if (adminSession) return !/^\/(cart|me|wishlist|track)(\/|\?|$)/i.test(path);
+  // Admin data changes frequently and must be revalidated on every route visit.
+  // Keeping these responses in the in-memory cache can make pages appear empty
+  // until a hard reload clears the cache.
+  if (adminSession) return false;
   return !/^\/(cart|me|orders|wishlist|returns|dashboard|users|track|payments|admin)(\/|\?|$)/i.test(path);
 }
 
