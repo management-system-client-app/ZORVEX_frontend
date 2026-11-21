@@ -345,7 +345,6 @@ export function Header() {
     { label: "All Products", href: "/shop", children: [] as Category[] },
     { label: menCategory?.name ?? "MAN", href: menCategory ? `/shop?categoryId=${menCategory.id}` : "/shop?gender=MEN", children: menCategory ? catalog.categories.filter((child) => child.parentId === menCategory.id && child.isActive !== false) : [] as Category[] },
     { label: womenCategory?.name ?? "WOMEN", href: womenCategory ? `/shop?categoryId=${womenCategory.id}` : "/shop?gender=WOMEN", children: womenCategory ? catalog.categories.filter((child) => child.parentId === womenCategory.id && child.isActive !== false) : [] as Category[] },
-    { label: "CHILD", href: "/shop?gender=KIDS", children: [] as Category[] },
     ...topLevelCategories.filter((category) => !linkedGenderCategories.has(category.id)).map((category) => ({
       label: category.name,
       href: `/shop?categoryId=${category.id}`,

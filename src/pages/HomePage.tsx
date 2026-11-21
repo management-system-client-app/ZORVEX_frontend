@@ -8,85 +8,8 @@ import { productFlags } from "../format";
 import { useStore } from "../state";
 import type { HomeBlock, HomePayload, ProductCardData } from "../types";
 
-const HOME_CACHE_KEY = "store_home_payload_v2";
-const LATEST_PRODUCTS_CACHE_KEY = "store_latest_products";
-const DAILY_DEALS_CACHE_KEY = "store_daily_deals";
-const BEST_SELLERS_CACHE_KEY = "store_best_sellers";
 const DEFAULT_STORE_NOTICE_TITLE = "RESELLKORI UPDATE";
 const DEFAULT_STORE_NOTICE_BODY = "নতুন পণ্য, দারুণ অফার আর সারা দেশের পছন্দের কালেকশন—সব এক জায়গায়।";
-
-function isProductList(value: unknown): value is ProductCardData[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (product) =>
-        typeof product === "object" &&
-        product !== null &&
-        "id" in product &&
-        typeof product.id === "string" &&
-        "name" in product &&
-        typeof product.name === "string" &&
-        "basePrice" in product,
-    )
-  );
-}
-
-function readCachedProducts(key: string): ProductCardData[] {
-  try {
-    const cached: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
-    return isProductList(cached) ? cached : [];
-  } catch (reason) {
-    console.warn("Cached products could not be read", reason);
-    return [];
-  }
-}
-
-function cacheProducts(key: string, products: ProductCardData[]) {
-  try {
-    localStorage.setItem(key, JSON.stringify(products));
-  } catch (reason) {
-    console.warn("Products could not be cached", reason);
-  }
-}
-
-function readCachedDailyDeals(): ProductCardData[] {
-  return readCachedProducts(DAILY_DEALS_CACHE_KEY);
-}
-
-function cacheDailyDeals(products: ProductCardData[]) {
-  cacheProducts(DAILY_DEALS_CACHE_KEY, products);
-}
-
-function readCachedHome(): HomePayload | null {
-  try {
-    const cached: unknown = JSON.parse(localStorage.getItem(HOME_CACHE_KEY) ?? "null");
-    if (
-      typeof cached === "object" &&
-      cached !== null &&
-      "banners" in cached &&
-      Array.isArray(cached.banners) &&
-      "campaigns" in cached &&
-      Array.isArray(cached.campaigns) &&
-      "newArrivals" in cached &&
-      Array.isArray(cached.newArrivals) &&
-      "trendingProducts" in cached &&
-      Array.isArray(cached.trendingProducts)
-    ) {
-      return cached as HomePayload;
-    }
-  } catch (reason) {
-    console.warn("Cached home content could not be read", reason);
-  }
-  return null;
-}
-
-function cacheHome(home: HomePayload) {
-  try {
-    localStorage.setItem(HOME_CACHE_KEY, JSON.stringify(home));
-  } catch (reason) {
-    console.warn("Home content could not be cached", reason);
-  }
-}
 
 function HomeBannerSlider({ banners }: { banners: HomeBlock[] }) {
   const slides = banners.filter((banner) => banner.imageUrl);
@@ -164,34 +87,19 @@ function HomeSkeleton() {
 export function HomePage() {
   const { catalog, categoryImages } = useStore();
   const [storeNotice, setStoreNotice] = useState({ title: DEFAULT_STORE_NOTICE_TITLE, body: DEFAULT_STORE_NOTICE_BODY });
-  const [initialHome] = useState(readCachedHome);
-  const [banners, setBanners] = useState<HomeBlock[]>(() => initialHome?.banners.filter((banner) => banner.imageUrl) ?? []);
-  const [campaigns, setCampaigns] = useState<HomeBlock[]>(() =>
-    initialHome?.campaigns.filter((campaign) => campaign.imageUrl).slice(0, 2) ?? [],
-  );
-  const [gadgetBanners, setGadgetBanners] = useState<HomeBlock[]>(() =>
-    initialHome?.gadgetBanners?.filter((banner) => banner.imageUrl).slice(0, 3) ?? [],
-  );
-  const [dailyDeals, setDailyDeals] = useState<ProductCardData[]>(() => {
-    const cachedDeals = readCachedDailyDeals();
-    if (cachedDeals.length > 0) return cachedDeals;
-    return (initialHome?.trendingProducts ?? []).filter((product) => productFlags(product).onSale);
-  });
-  const dailyDealsRef = useRef(dailyDeals);
-  const initialArrival = initialHome?.newArrivals[0];
-  const [arrivals, setArrivals] = useState<ProductCardData[]>(initialArrival?.products ?? []);
-  const [arrivalHref, setArrivalHref] = useState(
-    initialArrival?.categoryId ? `/shop?categoryId=${initialArrival.categoryId}` : "/shop?sort=latest",
-  );
-  const [selectedTrending, setSelectedTrending] = useState<ProductCardData[]>(initialHome?.trendingProducts ?? []);
+  const [banners, setBanners] = useState<HomeBlock[]>([]);
+  const [campaigns, setCampaigns] = useState<HomeBlock[]>([]);
+  const [gadgetBanners, setGadgetBanners] = useState<HomeBlock[]>([]);
+  const [dailyDeals, setDailyDeals] = useState<ProductCardData[]>([]);
+  const [arrivals, setArrivals] = useState<ProductCardData[]>([]);
+  const [arrivalHref, setArrivalHref] = useState("/shop?sort=latest");
+  const [selectedTrending, setSelectedTrending] = useState<ProductCardData[]>([]);
   const [trendingCategoryId, setTrendingCategoryId] = useState("all");
-  const [latestProducts, setLatestProducts] = useState<ProductCardData[]>(() =>
-    readCachedProducts(LATEST_PRODUCTS_CACHE_KEY),
-  );
+  const [latestProducts, setLatestProducts] = useState<ProductCardData[]>([]);
   const homePayloadVersion = useRef(0);
-  const [best, setBest] = useState<ProductCardData[]>(() => readCachedProducts(BEST_SELLERS_CACHE_KEY));
+  const [best, setBest] = useState<ProductCardData[]>([]);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(initialHome === null);
+  const [loading, setLoading] = useState(true);
   const skeletonRef = useRef<HTMLDivElement>(null);
   const [reservedHeight, setReservedHeight] = useState(0);
   const isLoading = loading;
@@ -208,19 +116,11 @@ export function HomePage() {
 
   function updateDailyDeals(products: ProductCardData[]) {
     const discounted = products.filter((product) => productFlags(product).onSale);
-    if (discounted.length === 0) return;
-
-    const nextById = new Map(dailyDealsRef.current.map((product) => [product.id, product]));
-    for (const product of discounted) nextById.set(product.id, product);
-    const nextDeals = [...nextById.values()];
-    dailyDealsRef.current = nextDeals;
-    setDailyDeals(nextDeals);
-    cacheDailyDeals(nextDeals);
+    setDailyDeals(discounted);
   }
 
   function applyHomePayload(home: HomePayload, isActive: () => boolean = () => true) {
     const version = ++homePayloadVersion.current;
-    cacheHome(home);
     setBanners(home.banners.filter((banner) => banner.imageUrl));
     setCampaigns(home.campaigns.filter((campaign) => campaign.imageUrl).slice(0, 2));
     setGadgetBanners(home.gadgetBanners?.filter((banner) => banner.imageUrl).slice(0, 3) ?? []);
@@ -233,7 +133,6 @@ export function HomePage() {
       (products) => {
         if (isActive() && version === homePayloadVersion.current) {
           setSelectedTrending(products);
-          cacheHome({ ...home, trendingProducts: products });
         }
       },
       (reason: unknown) => {
@@ -271,13 +170,11 @@ export function HomePage() {
       .then(async (result) => {
         if (!active) return;
         setLatestProducts(result.items);
-        cacheProducts(LATEST_PRODUCTS_CACHE_KEY, result.items);
         updateDailyDeals(result.items);
         setLoading(false);
         const products = await hydrateImages(result.items);
         if (active) {
           setLatestProducts(products);
-          cacheProducts(LATEST_PRODUCTS_CACHE_KEY, products);
           updateDailyDeals(products);
         }
       })
@@ -293,7 +190,6 @@ export function HomePage() {
       .then((products) => {
         if (active) {
           setBest(products);
-          cacheProducts(BEST_SELLERS_CACHE_KEY, products);
         }
       })
       .catch((reason: unknown) => {
@@ -339,15 +235,12 @@ export function HomePage() {
         ])
           .then(async ([result, bestSellers]) => {
             if (!active) return;
-          setLatestProducts(result.items);
-          cacheProducts(LATEST_PRODUCTS_CACHE_KEY, result.items);
+            setLatestProducts(result.items);
             setBest(bestSellers);
-            cacheProducts(BEST_SELLERS_CACHE_KEY, bestSellers);
             updateDailyDeals(result.items);
             const products = await hydrateImages(result.items);
             if (active) {
-            setLatestProducts(products);
-            cacheProducts(LATEST_PRODUCTS_CACHE_KEY, products);
+              setLatestProducts(products);
               updateDailyDeals(products);
             }
           })
@@ -378,7 +271,6 @@ export function HomePage() {
   const genderTiles = [
     { label: "MAN", gender: "MEN", pattern: /(^|[^a-z])(men|man)([^a-z]|$)|mens|punjabi|shoes/ },
     { label: "WOMEN", gender: "WOMEN", pattern: /women|woman|fashion/ },
-    { label: "CHILD", gender: "KIDS", pattern: /kids?|children|child/ },
   ].map((item) => ({
     ...item,
     image: tiles.find(({ category }) => item.pattern.test(`${category.slug} ${category.name}`.toLowerCase()))?.image ?? null,
