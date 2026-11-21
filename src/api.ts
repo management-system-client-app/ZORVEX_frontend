@@ -339,7 +339,7 @@ export const api = {
   settings: (fresh = false) => request<Settings>("/settings", {}, { fresh }).then((res) => res.data),
   catalog: (fresh = false) => request<Catalog>("/catalog", {}, { fresh }).then((res) => res.data),
   categories: (fresh = false) => fetchAllCategories(true, fresh),
-  adminCategories: () => fetchAllCategories(false),
+  adminCategories: () => fetchAllCategories(false, true),
   saveCategory: async (input: Record<string, unknown>, image?: File | null, id?: string) => {
     const body = new FormData();
     body.append("data", JSON.stringify(input));
