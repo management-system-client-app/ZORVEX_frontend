@@ -79,7 +79,7 @@ export function productThumbnailUrl(value: string | null | undefined): string | 
   if (firstSegment.split(",").some((part) => /^(?:a|b|c|dpr|e|f|fl|g|h|q|r|w|x|y|z)_/.test(part))) {
     path.shift();
   }
-  return `${prefix}c_limit,w_640,h_800,f_auto,q_auto/${path.join("/")}`;
+  return `${prefix}c_limit,w_480,h_600,f_auto,q_auto:eco/${path.join("/")}`;
 }
 
 export function coverImage(product: {

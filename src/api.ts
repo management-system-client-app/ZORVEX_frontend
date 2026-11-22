@@ -295,29 +295,11 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
   return text ? `?${text}` : "";
 }
 
-const imageCache = new Map<string, string | null>();
-
 export async function hydrateImages(products: ProductCardData[]): Promise<ProductCardData[]> {
-  const missing = products.filter((product) => !product.images?.length && !product.imageUrl);
-  await Promise.all(
-    missing.map(async (product) => {
-      if (imageCache.has(product.id)) return;
-      try {
-        const detail = await api.product(product.id);
-        const url =
-          detail.images.find((image) => image.isPrimary)?.url ?? detail.images[0]?.url ?? null;
-        imageCache.set(product.id, url);
-      } catch {
-        imageCache.set(product.id, null);
-      }
-    }),
-  );
-
-  return products.map((product) => {
-    if (product.images?.length || product.imageUrl) return product;
-    const url = imageCache.get(product.id);
-    return url ? { ...product, imageUrl: url } : product;
-  });
+  // Product list and home endpoints already return the card image when one exists.
+  // Fetching a full product detail for every card without an image creates an N+1
+  // request burst and blocks the page even though those products have no thumbnail.
+  return products;
 }
 
 async function fetchAllCategories(activeOnly: boolean, fresh = false): Promise<Category[]> {
