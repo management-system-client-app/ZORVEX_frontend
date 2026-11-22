@@ -11,12 +11,14 @@ export function ProductCard({
   dealCard = false,
   shopCard = false,
   prioritizeImage = false,
+  eagerImage = false,
 }: {
   product: ProductCardData;
   showAvailableStock?: boolean;
   dealCard?: boolean;
   shopCard?: boolean;
   prioritizeImage?: boolean;
+  eagerImage?: boolean;
 }) {
   const imageCandidates = useMemo(() => {
     const images = product.images ?? [];
@@ -47,7 +49,7 @@ export function ProductCard({
               className="product-image"
               src={image}
               alt={product.name}
-              loading={prioritizeImage ? "eager" : "lazy"}
+              loading={prioritizeImage || eagerImage ? "eager" : "lazy"}
               fetchPriority={prioritizeImage ? "high" : "auto"}
               decoding="async"
               onError={() => setImageIndex((current) => current + 1)}
@@ -199,6 +201,7 @@ export function ProductCarousel({
             dealCard={dealCards}
             shopCard
             prioritizeImage={index === 0}
+            eagerImage={index < 3}
           />
         ))}
       </div>
@@ -235,6 +238,7 @@ export function ProductGrid({ products, shopCards = true }: { products: ProductC
           product={product}
           shopCard={shopCards}
           prioritizeImage={index === 0}
+          eagerImage={index < 4}
         />
       ))}
     </div>
