@@ -5,49 +5,13 @@ import { money, productFlags, productThumbnailUrl } from "../format";
 import { recordRecentlyViewed } from "../recentlyViewed";
 import type { ProductCardData } from "../types";
 
-const MAX_ACTIVE_PRODUCT_IMAGES = 5;
-type QueuedProductImage = { start: (release: () => void) => void; started: boolean; cancelled: boolean };
-const imageQueue: QueuedProductImage[] = [];
-let activeProductImages = 0;
-
-function pumpProductImageQueue() {
-  while (activeProductImages < MAX_ACTIVE_PRODUCT_IMAGES && imageQueue.length > 0) {
-    const item = imageQueue.shift();
-    if (!item || item.cancelled) continue;
-    item.started = true;
-    activeProductImages += 1;
-    let released = false;
-    item.start(() => {
-      if (released) return;
-      released = true;
-      activeProductImages = Math.max(0, activeProductImages - 1);
-      pumpProductImageQueue();
-    });
-  }
-}
-
-function enqueueProductImage(start: (release: () => void) => void) {
-  const item: QueuedProductImage = { start, started: false, cancelled: false };
-  imageQueue.push(item);
-  pumpProductImageQueue();
-  return () => {
-    if (item.started) {
-      item.cancelled = true;
-      // The image load/error handler owns releasing an active slot.
-      return;
-    }
-    item.cancelled = true;
-    const index = imageQueue.indexOf(item);
-    if (index >= 0) imageQueue.splice(index, 1);
-  };
-}
-
 export function ProductCard({
   product,
   showAvailableStock = false,
   dealCard = false,
   shopCard = false,
   prioritizeImage = false,
+  eagerImage = false,
 }: {
   product: ProductCardData;
   showAvailableStock?: boolean;
@@ -65,58 +29,8 @@ export function ProductCard({
     ].map(productThumbnailUrl).filter((url): url is string => Boolean(url)))];
   }, [product.imageUrl, product.images]);
   const [imageIndex, setImageIndex] = useState(0);
-  const [imageReadyToLoad, setImageReadyToLoad] = useState(false);
-  const cardImageRef = useRef<HTMLImageElement>(null);
-  const releaseImageSlotRef = useRef<(() => void) | null>(null);
-  useEffect(() => {
-    setImageIndex(0);
-    setImageReadyToLoad(false);
-  }, [imageCandidates]);
+  useEffect(() => setImageIndex(0), [imageCandidates]);
   const image = imageCandidates[imageIndex] ?? null;
-
-  useEffect(() => {
-    const img = cardImageRef.current;
-    if (!img || !image) return;
-    let cancelled = false;
-    let cancelQueue = () => {};
-    const requestImage = () => {
-      if (cancelled) return;
-      cancelQueue = enqueueProductImage((release) => {
-        if (cancelled) {
-          release();
-          return;
-        }
-        releaseImageSlotRef.current = release;
-        setImageReadyToLoad(true);
-      });
-    };
-    let observer: IntersectionObserver | null = null;
-    if ("IntersectionObserver" in window) {
-      observer = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) {
-          observer?.disconnect();
-          requestImage();
-        }
-      }, { rootMargin: "200px" });
-      observer.observe(img);
-    } else {
-      requestImage();
-    }
-    return () => {
-      cancelled = true;
-      observer?.disconnect();
-      cancelQueue();
-      releaseImageSlotRef.current?.();
-      releaseImageSlotRef.current = null;
-    };
-  }, [image]);
-
-  const finishImageLoad = () => {
-    if (releaseImageSlotRef.current) {
-      releaseImageSlotRef.current();
-      releaseImageSlotRef.current = null;
-    }
-  };
   const flags = productFlags(product);
   const discount = flags.compare != null ? Math.round(((flags.compare - flags.price) / flags.compare) * 100) : null;
   const savings = flags.compare != null ? flags.compare - flags.price : 0;
@@ -133,18 +47,12 @@ export function ProductCard({
           {image ? (
             <img
               className="product-image"
-              ref={cardImageRef}
-              src={imageReadyToLoad ? image : undefined}
+              src={image}
               alt={product.name}
-              loading="eager"
+              loading={prioritizeImage || eagerImage ? "eager" : "lazy"}
               fetchPriority={prioritizeImage ? "high" : "auto"}
               decoding="async"
-              onLoad={finishImageLoad}
-              onError={() => {
-                finishImageLoad();
-                setImageReadyToLoad(false);
-                setImageIndex((current) => current + 1);
-              }}
+              onError={() => setImageIndex((current) => current + 1)}
             />
           ) : <div className="photo-fallback" />}
           {dealCard ? (
@@ -293,7 +201,6 @@ export function ProductCarousel({
             dealCard={dealCards}
             shopCard
             prioritizeImage={index === 0}
-            eagerImage={index < 3}
           />
         ))}
       </div>
@@ -330,7 +237,6 @@ export function ProductGrid({ products, shopCards = true }: { products: ProductC
           product={product}
           shopCard={shopCards}
           prioritizeImage={index === 0}
-          eagerImage={index < 4}
         />
       ))}
     </div>
