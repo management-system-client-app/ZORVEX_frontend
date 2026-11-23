@@ -48,7 +48,6 @@ export function ProductCard({
   dealCard = false,
   shopCard = false,
   prioritizeImage = false,
-  eagerImage = false,
 }: {
   product: ProductCardData;
   showAvailableStock?: boolean;
@@ -137,7 +136,7 @@ export function ProductCard({
               ref={cardImageRef}
               src={imageReadyToLoad ? image : undefined}
               alt={product.name}
-              loading={prioritizeImage || eagerImage ? "eager" : "lazy"}
+              loading="eager"
               fetchPriority={prioritizeImage ? "high" : "auto"}
               decoding="async"
               onLoad={finishImageLoad}
