@@ -67,7 +67,7 @@ export function extractSupplierSizes(description?: string | null): string[] {
   })))];
 }
 
-export function productThumbnailUrl(value: string | null | undefined, width = 480): string | null {
+export function productThumbnailUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   const marker = "/image/upload/";
   const markerIndex = value.indexOf(marker);
@@ -79,9 +79,7 @@ export function productThumbnailUrl(value: string | null | undefined, width = 48
   if (firstSegment.split(",").some((part) => /^(?:a|b|c|dpr|e|f|fl|g|h|q|r|w|x|y|z)_/.test(part))) {
     path.shift();
   }
-  const boundedWidth = Math.max(160, Math.min(1200, Math.round(width)));
-  const boundedHeight = Math.round(boundedWidth * 1.25);
-  return `${prefix}c_limit,w_${boundedWidth},h_${boundedHeight},f_auto,q_auto:eco/${path.join("/")}`;
+  return `${prefix}c_limit,w_480,h_600,f_auto,q_auto:eco/${path.join("/")}`;
 }
 
 export function coverImage(product: {

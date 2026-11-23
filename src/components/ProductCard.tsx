@@ -26,7 +26,7 @@ export function ProductCard({
       product.imageUrl,
       images.find((item) => item.isPrimary)?.url,
       ...images.map((item) => item.url),
-    ].map((url) => productThumbnailUrl(url, 400)).filter((url): url is string => Boolean(url)))];
+    ].map(productThumbnailUrl).filter((url): url is string => Boolean(url)))];
   }, [product.imageUrl, product.images]);
   const [imageIndex, setImageIndex] = useState(0);
   useEffect(() => setImageIndex(0), [imageCandidates]);
