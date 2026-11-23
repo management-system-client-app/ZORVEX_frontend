@@ -26,7 +26,7 @@ export function ProductCard({
       product.imageUrl,
       images.find((item) => item.isPrimary)?.url,
       ...images.map((item) => item.url),
-    ].map(productThumbnailUrl).filter((url): url is string => Boolean(url)))];
+    ].map((url) => productThumbnailUrl(url, 400)).filter((url): url is string => Boolean(url)))];
   }, [product.imageUrl, product.images]);
   const [imageIndex, setImageIndex] = useState(0);
   useEffect(() => setImageIndex(0), [imageCandidates]);
@@ -50,7 +50,7 @@ export function ProductCard({
               src={image}
               alt={product.name}
               loading={prioritizeImage || eagerImage ? "eager" : "lazy"}
-              fetchPriority={prioritizeImage ? "high" : "auto"}
+              fetchPriority={prioritizeImage ? "high" : "low"}
               decoding="async"
               onError={() => setImageIndex((current) => current + 1)}
             />
@@ -237,6 +237,7 @@ export function ProductGrid({ products, shopCards = true }: { products: ProductC
           product={product}
           shopCard={shopCards}
           prioritizeImage={index === 0}
+          eagerImage={index > 0 && index < 4}
         />
       ))}
     </div>
