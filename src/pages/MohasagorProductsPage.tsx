@@ -79,6 +79,7 @@ export function MohasagorProductsPage() {
   const visibleProductGroups = selectedCategory
     ? productGroups.filter((group) => group.category === selectedCategory)
     : productGroups;
+  const firstVisibleProductId = visibleProductGroups[0]?.products[0]?.id;
 
   useEffect(() => {
     const target = loadMoreRef.current;
@@ -125,13 +126,21 @@ export function MohasagorProductsPage() {
               <div className="mohasagor-grid">
                 {group.products.map((product) => {
                   const images = product.product_images ?? product.product_image;
-                  const image = imageUrl(images?.find((item) => item.product_image)?.product_image ?? product.thumbnail_img);
+                  const image = imageUrl(product.thumbnail_img ?? images?.find((item) => item.product_image)?.product_image);
                   const description = plainText(product.details);
                   const price = product.price;
                   return (
                     <article className="mohasagor-card" key={product.id}>
                       <div className="mohasagor-card-image">
-                        {image ? <img src={image} alt={product.name} loading="lazy" decoding="async" /> : <span>No image</span>}
+                        {image ? (
+                          <img
+                            src={image}
+                            alt={product.name}
+                            loading={product.id === firstVisibleProductId ? "eager" : "lazy"}
+                            fetchPriority={product.id === firstVisibleProductId ? "high" : "low"}
+                            decoding="async"
+                          />
+                        ) : <span>No image</span>}
                       </div>
                       <div className="mohasagor-card-copy">
                         <h2>{product.name}</h2>
