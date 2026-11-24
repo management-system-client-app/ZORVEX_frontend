@@ -16101,3 +16101,33 @@ body:has(.checkout-unique),
     font-size: 10px !important;
   }
 }
+
+
+/* Keep light-theme product cards light when images are loading or unavailable. */
+.store-shell.theme-light:not(.theme-dark) .shop-results .shop-product-card,
+.store-shell.theme-light:not(.theme-dark) .product-row .shop-product-card,
+.store-shell.theme-light:not(.theme-dark) .related-products-section .shop-product-card {
+  border-color: #e2e5e9;
+  background: #fff;
+  color: #20252b;
+}
+.store-shell.theme-light:not(.theme-dark) .shop-results .shop-product-card .shop-card-media,
+.store-shell.theme-light:not(.theme-dark) .product-row .shop-product-card .shop-card-media,
+.store-shell.theme-light:not(.theme-dark) .related-products-section .shop-product-card .shop-card-media {
+  background: #f4f5f6;
+}
+.store-shell.theme-light:not(.theme-dark) .shop-results .shop-product-card .shop-card-info h3,
+.store-shell.theme-light:not(.theme-dark) .product-row .shop-product-card .shop-card-info h3,
+.store-shell.theme-light:not(.theme-dark) .related-products-section .shop-product-card .shop-card-info h3 {
+  color: #20252b;
+}
+.store-shell.theme-light:not(.theme-dark) .shop-results .shop-product-card .shop-card-price-row,
+.store-shell.theme-light:not(.theme-dark) .product-row .shop-product-card .shop-card-price-row,
+.store-shell.theme-light:not(.theme-dark) .related-products-section .shop-product-card .shop-card-price-row {
+  border-color: #e2e5e9;
+}
+.store-shell.theme-light:not(.theme-dark) .shop-results .shop-product-card .shop-card-price-row .price,
+.store-shell.theme-light:not(.theme-dark) .product-row .shop-product-card .shop-card-price-row .price,
+.store-shell.theme-light:not(.theme-dark) .related-products-section .shop-product-card .shop-card-price-row .price {
+  color: #a85d00;
+}
