@@ -50,7 +50,7 @@ export function ProductCard({
               src={image}
               alt={product.name}
               loading={prioritizeImage || eagerImage ? "eager" : "lazy"}
-              fetchPriority={prioritizeImage ? "high" : "low"}
+              fetchPriority={prioritizeImage ? "high" : "auto"}
               decoding="async"
               onError={() => setImageIndex((current) => current + 1)}
             />
