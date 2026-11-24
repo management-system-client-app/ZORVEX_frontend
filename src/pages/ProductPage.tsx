@@ -257,7 +257,8 @@ export function ProductPage() {
         const sariPattern = /sari|saree|saari|shari|শাড়ি/i;
         const isSari = sariPattern.test(`${next.name} ${next.category.name} ${next.category.slug}`);
         const isRelevant = (item: ProductCardData) =>
-          item.id !== next.id && (!isSari || sariPattern.test(`${item.name} ${item.category?.name ?? ""} ${item.category?.slug ?? ""}`));
+          item.id !== next.id && item.category?.id === next.category.id &&
+          (!isSari || sariPattern.test(`${item.name} ${item.category?.name ?? ""} ${item.category?.slug ?? ""}`));
         try {
           for (const item of await api.related(id, true)) {
             if (isRelevant(item)) recommendations.set(item.id, item);
@@ -293,18 +294,6 @@ export function ProductPage() {
             } catch (reason) {
               console.warn("Saree suggestions could not be loaded", reason);
             }
-          }
-        }
-
-        if (recommendations.size < 30) {
-          try {
-            const latest = await api.products({ status: "ACTIVE", limit: 100, page: 1, sort: "latest" }, true);
-            for (const item of latest.items) {
-              if (item.id !== next.id && !recommendations.has(item.id)) recommendations.set(item.id, item);
-              if (recommendations.size >= 30) break;
-            }
-          } catch (reason) {
-            console.warn("Fallback product recommendations could not be loaded", reason);
           }
         }
 
@@ -1054,7 +1043,7 @@ export function ProductPage() {
             <div className="related-products-heading">
               <span>CURATED FOR YOU</span>
               <h2>You may also like</h2>
-              <p>Discover more styles selected to complement your choice.</p>
+              <p>More products from this category.</p>
             </div>
             <Link to={`/shop?categoryId=${product.category.id}`}>See more <ArrowRight size={16} /></Link>
           </div>
