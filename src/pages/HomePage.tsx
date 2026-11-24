@@ -169,7 +169,7 @@ export function HomePage() {
         if (active) setLoading(false);
       });
 
-    api.products({ status: "ACTIVE", limit: 12, page: 1, sort: "latest" })
+    api.products({ status: "ACTIVE", limit: 30, page: 1, sort: "latest" })
       .then(async (result) => {
         if (!active) return;
         setLatestProducts(result.items);
@@ -234,7 +234,7 @@ export function HomePage() {
       if (!refreshingProducts) {
         refreshingProducts = true;
         Promise.all([
-          api.products({ status: "ACTIVE", limit: 12, page: 1, sort: "latest" }, true),
+          api.products({ status: "ACTIVE", limit: 30, page: 1, sort: "latest" }, true),
           api.bestSellers(true),
         ])
           .then(async ([result, bestSellers]) => {
