@@ -39,7 +39,7 @@ export function ShopPage() {
   const query = useMemo(
     () => ({
       status: "ACTIVE",
-      limit: "50",
+      limit: "12",
       page: params.get("page") ?? "1",
       sort: params.get("sort") ?? "latest",
       search: params.get("search") ?? undefined,
@@ -273,7 +273,7 @@ export function ShopPage() {
           {loading ? <ProductGridSkeleton /> : null}
           {!loading && items.length === 0 && !error ? <p className="empty">Sorry! No result.</p> : null}
           {!loading && items.length > 0 ? <ProductGrid products={items} shopCards /> : null}
-          {!loading && meta && meta.total > 50 && items.length > 0 ? (
+          {!loading && meta && meta.total > 12 && items.length > 0 ? (
             <nav className="shop-pagination" aria-label="Product pages">
               <button
                 type="button"
