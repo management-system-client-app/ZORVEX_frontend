@@ -30,6 +30,7 @@ export function ShopPage() {
   const [colors, setColors] = useState<Color[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [fuzzySearch, setFuzzySearch] = useState(false);
   const [sheet, setSheet] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
   const loadedQueryKeyRef = useRef<string | null>(null);
@@ -124,6 +125,20 @@ export function ShopPage() {
           : query;
         const result = await api.products(productQuery, fresh);
         if (!active) return;
+        if (result.meta.total === 0 && query.search && query.search.trim().length >= 3 &&
+          !query.categoryId && !query.brandId && !query.gender && !query.sizeId && !query.colorId && !query.fabricId && !query.minPrice && !query.maxPrice && !query.inStock) {
+          const closeMatches = await api.productSuggestions(query.search.trim());
+          if (!active) return;
+          if (closeMatches.length > 0) {
+            setItems(closeMatches);
+            setMeta({ page: 1, limit: closeMatches.length, total: closeMatches.length, totalPages: 1 });
+            setFuzzySearch(true);
+            setError("");
+            loadedQueryKeyRef.current = requestKey;
+            return;
+          }
+        }
+        setFuzzySearch(false);
         const sameQuery = loadedQueryKeyRef.current === requestKey;
         setItems((current) => {
           if (!sameQuery) return result.items;
@@ -246,6 +261,15 @@ export function ShopPage() {
           <p>Find your next best-selling product for your store.</p>
         </div>
       </header>
+      {!params.get("categoryId") && !params.get("search") ? (
+        <nav className="shop-category-shortcuts" aria-label="Browse product categories">
+          <Link to="/shop" className="shop-category-shortcut">All products</Link>
+          {catalog.categories
+            .filter((item) => !item.parentId && item.isActive !== false)
+            .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0) || first.name.localeCompare(second.name))
+            .map((item) => <Link key={item.id} to={`/shop?categoryId=${item.id}`} className="shop-category-shortcut">{item.name}</Link>)}
+        </nav>
+      ) : null}
       <div className="shop">
         <aside className="filters">
           <Filters {...filterProps} />
@@ -269,6 +293,7 @@ export function ShopPage() {
               ))}
             </select>
           </div>
+          {fuzzySearch ? <p className="shop-fuzzy-note">No exact spelling match. Showing the closest products for “{query.search}”.</p> : null}
           {error ? <p className="error">{error}</p> : null}
           {loading ? <ProductGridSkeleton /> : null}
           {!loading && items.length === 0 && !error ? <p className="empty">Sorry! No result.</p> : null}

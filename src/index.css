@@ -16131,3 +16131,45 @@ body:has(.checkout-unique),
 .store-shell.theme-light:not(.theme-dark) .related-products-section .shop-product-card .shop-card-price-row .price {
   color: #a85d00;
 }
+.shop-category-shortcuts {
+  display: flex;
+  gap: 9px;
+  margin: 14px 0 20px;
+  overflow-x: auto;
+  padding: 2px 1px 7px;
+  scrollbar-width: thin;
+}
+.shop-category-shortcut {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--ink, #253849);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.shop-category-shortcut:hover,
+.shop-category-shortcut:focus-visible {
+  border-color: #2864a8;
+  color: #155ba5;
+}
+.shop-fuzzy-note {
+  margin: 0 0 14px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #244f7b;
+  padding: 10px 13px;
+  font-size: 13px;
+}
+.store-shell.theme-dark .shop-category-shortcut {
+  border-color: #3a424d;
+  background: #20262e;
+  color: #e0e5eb;
+}
+.store-shell.theme-dark .shop-fuzzy-note {
+  background: #1b3147;
+  color: #c5e0fa;
+}
