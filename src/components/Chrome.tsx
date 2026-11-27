@@ -742,8 +742,8 @@ export function Header() {
                 )
               ) : (
                 <>
-                  <Link to="/login" onClick={() => setAccountMenuOpen(false)}><span className="account-menu-link-icon"><UserRound size={17} /></span><span>Login</span><ArrowRight size={16} /></Link>
-                  <Link to="/register" onClick={() => setAccountMenuOpen(false)}><span className="account-menu-link-icon"><Mail size={17} /></span><span>Register</span><ArrowRight size={16} /></Link>
+                  <Link to="/login" onClick={(event) => { event.preventDefault(); setAccountMenuOpen(false); navigate("/login"); }}><span className="account-menu-link-icon"><UserRound size={17} /></span><span>Login</span><ArrowRight size={16} /></Link>
+                  <Link to="/register" onClick={(event) => { event.preventDefault(); setAccountMenuOpen(false); navigate("/register"); }}><span className="account-menu-link-icon"><Mail size={17} /></span><span>Register</span><ArrowRight size={16} /></Link>
                 </>
               )}
               <Link to="/track" onClick={() => setAccountMenuOpen(false)}><span className="account-menu-link-icon"><PackageSearch size={17} /></span><span>Order Tracking</span><ArrowRight size={16} /></Link>
