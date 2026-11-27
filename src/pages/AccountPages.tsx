@@ -157,7 +157,7 @@ function AccountActionButton({ loading, children }: { loading: boolean; children
 }
 
 export function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, ready, login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -179,7 +179,7 @@ export function LoginPage() {
     }
   }
 
-  if (user) return <Navigate to={user.accountType === "ADMIN" ? "/admin" : "/"} replace />;
+  if (ready && user) return <Navigate to={user.accountType === "ADMIN" ? "/admin" : "/"} replace />;
 
   return (
     <StandaloneAuthLayout
