@@ -8,7 +8,7 @@
       "destination": "/api/sitemap"
     },
     {
-      "source": "/api/:path*",
+      "source": "/api/:path((?!sitemap).*)",
       "destination": "https://zorvex-backend.vercel.app/api/:path*"
     },
     {
