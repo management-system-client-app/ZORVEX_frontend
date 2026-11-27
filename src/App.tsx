@@ -183,15 +183,61 @@ function StaffReferralCapture() {
   return null;
 }
 
+const SEO_ORIGIN = "https://www.bazargrid.com";
+const ROUTE_SEO: Record<string, { title: string; description: string }> = {
+  "/": { title: "Online Shopping in Bangladesh", description: "Shop fashion, gadgets, beauty, and everyday essentials at Bazergrid Trends. Discover new arrivals and convenient online shopping in Bangladesh." },
+  "/shop": { title: "Shop Fashion, Gadgets & More", description: "Browse the latest products at Bazergrid Trends, from fashion and gadgets to beauty and everyday essentials." },
+  "/women": { title: "Women's Fashion", description: "Explore women's fashion, clothing, and accessories at Bazergrid Trends." },
+  "/mohasagor": { title: "Mohasagor Products", description: "Browse products from the Mohasagor catalog at Bazergrid Trends." },
+  "/outlets": { title: "Our Outlets", description: "Find Bazergrid Trends outlets and store information in Bangladesh." },
+};
+
+function setMeta(selector: string, attribute: "name" | "property", key: string, content: string) {
+  let element = document.head.querySelector<HTMLMetaElement>(selector);
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute(attribute, key);
+    document.head.append(element);
+  }
+  element.content = content;
+}
+
 function RouteDocumentTitle() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    document.title = "Bazergrid Trends";
+    const route = ROUTE_SEO[pathname] ?? (pathname.startsWith("/product/")
+      ? { title: "Product Details", description: "Explore product details, pricing, and availability at Bazergrid Trends." }
+      : { title: "Bazergrid Trends", description: "Shop fashion, gadgets, beauty, and everyday essentials online in Bangladesh." });
+    const title = pathname === "/" ? "Bazergrid Trends | Online Shopping in Bangladesh" : `${route.title} | Bazergrid Trends`;
+    const canonical = `${SEO_ORIGIN}${pathname}`;
+    const noIndex = /^\/(admin|account|checkout|cart|login|register|forgot-password|reset-password|auth)(\/|$)/.test(pathname)
+      || pathname === "/wishlist" || pathname === "/track";
+
+    document.title = title;
+    setMeta('meta[name="description"]', "name", "description", route.description);
+    setMeta('meta[name="robots"]', "name", "robots", noIndex ? "noindex, nofollow" : "index, follow");
+    setMeta('meta[property="og:title"]', "property", "og:title", title);
+    setMeta('meta[property="og:description"]', "property", "og:description", route.description);
+    setMeta('meta[property="og:url"]', "property", "og:url", canonical);
+    setMeta('meta[name="twitter:title"]', "name", "twitter:title", title);
+    setMeta('meta[name="twitter:description"]', "name", "twitter:description", route.description);
+    let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "canonical";
+      document.head.append(link);
+    }
+    link.href = canonical;
 
     const handlePageTitle = (event: Event) => {
-      const title = (event as CustomEvent<string>).detail;
-      if (title) document.title = `${title} | Bazergrid Trends`;
+      const pageTitle = (event as CustomEvent<string>).detail;
+      if (!pageTitle) return;
+      const productTitle = `${pageTitle} | Bazergrid Trends`;
+      document.title = productTitle;
+      setMeta('meta[property="og:title"]', "property", "og:title", productTitle);
+      setMeta('meta[name="twitter:title"]', "name", "twitter:title", productTitle);
+      setMeta('meta[name="description"]', "name", "description", `Shop ${pageTitle} at Bazergrid Trends. Check product details, pricing, and availability online in Bangladesh.`);
     };
     window.addEventListener("app:page-title", handlePageTitle);
     return () => window.removeEventListener("app:page-title", handlePageTitle);
