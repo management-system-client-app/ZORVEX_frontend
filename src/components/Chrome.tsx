@@ -394,7 +394,11 @@ export function Header() {
     if (!accountMenuOpen) return;
 
     function closeOnOutsideClick(event: PointerEvent) {
-      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
+      if (
+        event.target instanceof Node
+        && !accountMenuRef.current?.contains(event.target)
+        && !(event.target instanceof Element && event.target.closest("#account-menu-panel"))
+      ) {
         setAccountMenuOpen(false);
       }
     }
