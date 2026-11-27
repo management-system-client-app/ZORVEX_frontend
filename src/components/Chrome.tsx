@@ -406,10 +406,15 @@ export function Header() {
       if (event.key === "Escape") setAccountMenuOpen(false);
     }
 
-    document.addEventListener("pointerdown", closeOnOutsideClick);
+    const desktopViewport = window.matchMedia("(min-width: 900px)").matches;
+    if (desktopViewport) {
+      document.addEventListener("pointerdown", closeOnOutsideClick);
+    }
     window.addEventListener("keydown", closeOnEscape);
     return () => {
-      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      if (desktopViewport) {
+        document.removeEventListener("pointerdown", closeOnOutsideClick);
+      }
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [accountMenuOpen]);
