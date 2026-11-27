@@ -376,8 +376,7 @@ export function RegisterPage() {
     }
   }
 
-  if (!ready) return null;
-  if (user) return <Navigate to="/" replace />;
+  if (ready && user) return <Navigate to="/" replace />;
 
   return (
     <StandaloneAuthLayout
